@@ -100,6 +100,8 @@ def evaluate_event_entry(
         raise ValueError("decision_at must be timezone-aware")
     if not symbol.strip():
         raise ValueError("symbol is required")
+    if entry_date < decision_at.date():
+        raise ValueError("entry_date cannot precede the decision date")
     if earnings_block_days < 0 or material_action_block_days < 0:
         raise ValueError("event block windows cannot be negative")
 
@@ -137,10 +139,9 @@ def evaluate_event_entry(
             reasons.append(f"event_requires_manual_review:{event.event_id}")
         elif event.event_type == EventType.EARNINGS:
             reasons.append(f"earnings_within_{earnings_block_days}_calendar_days:{event.event_id}")
-        elif event.event_type in {
-            EventType.MATERIAL_CORPORATE_ACTION,
-            EventType.CRITICAL_CORPORATE_ACTION,
-        }:
+        elif event.event_type == EventType.CRITICAL_CORPORATE_ACTION:
+            reasons.append(f"critical_corporate_action_requires_manual_review:{event.event_id}")
+        elif event.event_type == EventType.MATERIAL_CORPORATE_ACTION:
             reasons.append(f"corporate_action_within_{material_action_block_days}_calendar_days:{event.event_id}")
 
     return EntryGateResult(allowed=not reasons, reasons=tuple(dict.fromkeys(reasons)))
