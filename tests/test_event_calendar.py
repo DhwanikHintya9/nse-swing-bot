@@ -190,3 +190,7 @@ def test_entry_date_before_decision_date_is_rejected():
         evaluate_event_entry(
             "ABC", DECISION, date(2026, 11, 3), [], coverage()
         )
+
+def test_primary_and_secondary_sources_must_be_independent_domains():
+    with pytest.raises(ValueError, match="independent domains"):
+        event(source_secondary="https://www.nseindia.com/another-page")
