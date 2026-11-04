@@ -36,6 +36,8 @@ class DataQualityQuarantine:
         directory = self.root / f"symbol={safe_symbol(symbol)}"
         directory.mkdir(parents=True, exist_ok=True)
         destination = directory / f"quarantine-{stamp}.json"
+        if destination.exists():
+            raise FileExistsError("refusing to overwrite quarantine record: " + str(destination))
         payload: dict[str, Any] = {
             "symbol": symbol,
             "start": start.isoformat(),
