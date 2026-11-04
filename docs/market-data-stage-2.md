@@ -25,3 +25,13 @@
 2. Add rate-limit scheduling, retry/backoff, sync checkpoints, and data-quality quarantine.
 3. Add historical corporate-action event ingestion and independent factor verification.
 4. Build point-in-time backtest datasets and universe membership history.
+
+
+## Stage 3A — universe and calendar reliability
+
+- Added a downloader for the official NSE Nifty 500 constituent CSV linked from the NSE index page.
+- Every downloaded universe is validated for its Symbol column, uniqueness, and expected count (500 by default), then persisted as an immutable snapshot with an explicit effective date and source URL.
+- Added an NSE trading-calendar loader for archived official holiday CSVs. The generated session index excludes declared holidays and can include explicitly declared special sessions, including weekend Muhurat sessions.
+- Calendar source provenance is retained with each holiday row. The calendar deliberately does not scrape a dynamic HTML page or silently infer exchange holidays.
+- Historical membership is not reconstructed by pretending the current list was always valid. Collect dated snapshots and official effective-date change notices before building exact membership intervals.
+- The Nifty 500 download is an external network operation and has not been exercised against NSE from CI; tests use injected response bytes. A failed download must not replace a previously approved snapshot.
