@@ -7,9 +7,9 @@ when its ex-date is on or before the requested as-of date.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import date
-import math
 
 import pandas as pd
 
