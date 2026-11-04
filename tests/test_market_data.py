@@ -14,6 +14,7 @@ from nse_swing_bot.market_data.instruments import (
 )
 from nse_swing_bot.market_data.kite_adapter import KiteMarketDataAdapter
 from nse_swing_bot.market_data.parquet_store import ParquetCandleStore
+from nse_swing_bot.market_data.service import MarketDataService
 from nse_swing_bot.market_data.validation import validate_daily_candles
 
 
@@ -203,3 +204,59 @@ def test_instrument_snapshot_is_immutable_and_requires_aware_timestamp(tmp_path)
     assert first.exists()
     with pytest.raises(FileExistsError, match="overwrite"):
         save_instrument_snapshot(frame, tmp_path, captured_at)
+
+
+
+def test_market_data_service_refreshes_master_and_syncs_one_symbol(tmp_path) -> None:
+    class FakeKiteClient:
+        def instruments(self, exchange=None):
+            return [
+                {
+                    "instrument_token": 123,
+                    "tradingsymbol": "ABC",
+                    "name": "ABC LTD",
+                    "tick_size": 0.05,
+                    "lot_size": 1,
+                    "instrument_type": "EQ",
+                    "segment": "NSE",
+                    "exchange": "NSE",
+                }
+            ]
+
+        def historical_data(
+            self,
+            instrument_token,
+            from_date,
+            to_date,
+            interval,
+            continuous=False,
+            oi=False,
+        ):
+            return [
+                {
+                    "date": pd.Timestamp("2024-01-01"),
+                    "open": 10.0,
+                    "high": 12.0,
+                    "low": 9.0,
+                    "close": 11.0,
+                    "volume": 100.0,
+                }
+            ]
+
+    adapter = KiteMarketDataAdapter(FakeKiteClient())
+    store = ParquetCandleStore(tmp_path / "parquet")
+    service = MarketDataService(adapter, store, tmp_path / "snapshots")
+    instruments, snapshot = service.refresh_instrument_master()
+
+    assert snapshot.exists()
+    assert instruments.iloc[0]["tradingsymbol"] == "ABC"
+
+    instrument = instruments.iloc[0]
+    paths = service.sync_daily_history(
+        instrument,
+        date(2024, 1, 1),
+        date(2024, 1, 1),
+        expected_sessions=pd.DatetimeIndex(["2024-01-01"]),
+    )
+    assert len(paths) == 1
+    assert store.read_latest("NSE:ABC").iloc[0]["close"] == pytest.approx(11.0)
