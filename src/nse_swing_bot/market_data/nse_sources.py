@@ -10,11 +10,15 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import date
 from io import BytesIO
+from pathlib import Path
 from urllib.request import Request, urlopen
 
 import pandas as pd
 
-from nse_swing_bot.market_data.instruments import normalize_nifty500_constituents
+from nse_swing_bot.market_data.instruments import (
+    normalize_nifty500_constituents,
+    save_nifty500_snapshot,
+)
 
 NIFTY_500_CSV_URL = "https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv"
 
@@ -40,6 +44,19 @@ def download_nifty500_constituents(
         source_name=NIFTY_500_CSV_URL,
         expected_count=expected_count,
     )
+
+
+def acquire_and_save_nifty500_snapshot(
+    root: Path,
+    effective_date: date,
+    downloader: Callable[[str], bytes] | None = None,
+    expected_count: int = 500,
+) -> Path:
+    """Acquire the official list and persist a dated immutable snapshot."""
+    constituents = download_nifty500_constituents(
+        effective_date, downloader=downloader, expected_count=expected_count
+    )
+    return save_nifty500_snapshot(constituents, root)
 
 
 def _download_bytes(url: str) -> bytes:
