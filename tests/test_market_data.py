@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pandas as pd
 import pytest
@@ -72,7 +72,7 @@ def test_parquet_snapshots_are_append_only_and_latest_wins(tmp_path) -> None:
     corrected = original.copy()
     corrected.iloc[0, corrected.columns.get_loc("close")] = 10.5
 
-    first = store.write_snapshot("NSE:ABC", original, datetime(2024, 1, 3, tzinfo=timezone.utc))
+    first = store.write_snapshot("NSE:ABC", original, datetime(2024, 1, 3, tzinfo=UTC))
     second = store.write_snapshot("NSE:ABC", corrected, datetime(2024, 1, 4, tzinfo=timezone.utc))
     assert first[0].exists() and second[0].exists()
     assert first[0] != second[0]
