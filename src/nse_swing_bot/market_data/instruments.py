@@ -83,16 +83,15 @@ def save_instrument_snapshot(
     return destination
 
 
-def load_nifty500_constituents(
-    csv_path: Path,
+def normalize_nifty500_constituents(
+    frame: pd.DataFrame,
     effective_date: date,
     source_name: str,
     expected_count: int | None = 500,
 ) -> pd.DataFrame:
-    """Load an explicitly sourced constituent CSV; no guessed or hardcoded universe."""
+    """Validate constituent rows and attach point-in-time source provenance."""
     if not source_name.strip():
         raise ValueError("source_name is required for universe provenance")
-    frame = pd.read_csv(csv_path)
     symbol_column = next((c for c in frame.columns if c.lower() == "symbol"), None)
     if symbol_column is None:
         raise ValueError("constituent CSV must contain a Symbol column")
@@ -104,13 +103,24 @@ def load_nifty500_constituents(
         raise ValueError(
             f"expected {expected_count} unique constituents, received {len(symbols)}"
         )
-
     return pd.DataFrame(
         {
             "symbol": symbols.sort_values().to_list(),
             "effective_date": effective_date.isoformat(),
             "source": source_name.strip(),
         }
+    )
+
+
+def load_nifty500_constituents(
+    csv_path: Path,
+    effective_date: date,
+    source_name: str,
+    expected_count: int | None = 500,
+) -> pd.DataFrame:
+    """Load an explicitly sourced constituent CSV; no guessed or hardcoded universe."""
+    return normalize_nifty500_constituents(
+        pd.read_csv(csv_path), effective_date, source_name, expected_count
     )
 
 
