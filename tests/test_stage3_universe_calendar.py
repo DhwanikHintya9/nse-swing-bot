@@ -6,7 +6,27 @@ import pytest
 from nse_swing_bot.market_data.nse_sources import (
     NIFTY_500_CSV_URL,
     download_nifty500_constituents,
+    acquire_and_save_nifty500_snapshot,
 )
+def test_acquired_nifty500_snapshot_is_immutable(tmp_path) -> None:
+    payload = b"Symbol\nAAA\nBBB\n"
+    path = acquire_and_save_nifty500_snapshot(
+        tmp_path,
+        date(2026, 11, 4),
+        downloader=lambda _: payload,
+        expected_count=2,
+    )
+    saved = pd.read_csv(path)
+    assert saved["symbol"].tolist() == ["AAA", "BBB"]
+    assert saved["source"].str.startswith("https://nsearchives.nseindia.com/").all()
+    with pytest.raises(FileExistsError, match="overwrite"):
+        acquire_and_save_nifty500_snapshot(
+            tmp_path,
+            date(2026, 11, 4),
+            downloader=lambda _: payload,
+            expected_count=2,
+        )
+
 from nse_swing_bot.market_data.trading_calendar import NSETradingCalendar
 
 
