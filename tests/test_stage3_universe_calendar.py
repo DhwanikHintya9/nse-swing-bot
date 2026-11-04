@@ -72,7 +72,9 @@ def test_calendar_excludes_holidays_and_includes_special_weekend_session(tmp_pat
     calendar = NSETradingCalendar.from_csv(
         path,
         source="NSE official 2026 equity holiday circular",
-        special_sessions={date(2026, 11, 8)},
+        coverage_start=date(2026, 1, 1),
+        coverage_end=date(2026, 12, 31),
+        special_sessions={date(2026, 11, 8): "NSE Muhurat trading circular 2026"},
     )
 
     sessions = calendar.sessions(date(2026, 11, 2), date(2026, 11, 9))
@@ -89,6 +91,23 @@ def test_calendar_requires_source_and_date_column(tmp_path) -> None:
     path = tmp_path / "bad.csv"
     pd.DataFrame({"Holiday": ["2026-01-01"]}).to_csv(path, index=False)
     with pytest.raises(ValueError, match="source"):
-        NSETradingCalendar.from_csv(path, source="")
+        NSETradingCalendar.from_csv(
+            path, source="", coverage_start=date(2026, 1, 1), coverage_end=date(2026, 12, 31)
+        )
     with pytest.raises(ValueError, match="Date"):
-        NSETradingCalendar.from_csv(path, source="NSE")
+        NSETradingCalendar.from_csv(
+            path, source="NSE", coverage_start=date(2026, 1, 1), coverage_end=date(2026, 12, 31)
+        )
+
+
+def test_calendar_fails_closed_outside_declared_coverage(tmp_path) -> None:
+    path = tmp_path / "holidays.csv"
+    pd.DataFrame({"Date": ["2026-11-03"]}).to_csv(path, index=False)
+    calendar = NSETradingCalendar.from_csv(
+        path,
+        source="NSE official 2026 equity holiday circular",
+        coverage_start=date(2026, 1, 1),
+        coverage_end=date(2026, 12, 31),
+    )
+    with pytest.raises(ValueError, match="coverage"):
+        calendar.sessions(date(2025, 12, 31), date(2026, 1, 2))
