@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -23,8 +23,8 @@ class ParquetCandleStore:
         candles: pd.DataFrame,
         captured_at: datetime | None = None,
     ) -> list[Path]:
-        captured_at = captured_at or datetime.now(timezone.utc)
-        captured_at = captured_at.astimezone(timezone.utc)
+        captured_at = captured_at or datetime.now(UTC)
+        captured_at = captured_at.astimezone(UTC)
         validated = validate_daily_candles(candles)
         paths: list[Path] = []
 
