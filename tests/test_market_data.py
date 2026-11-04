@@ -73,7 +73,7 @@ def test_parquet_snapshots_are_append_only_and_latest_wins(tmp_path) -> None:
     corrected.iloc[0, corrected.columns.get_loc("close")] = 10.5
 
     first = store.write_snapshot("NSE:ABC", original, datetime(2024, 1, 3, tzinfo=UTC))
-    second = store.write_snapshot("NSE:ABC", corrected, datetime(2024, 1, 4, tzinfo=timezone.utc))
+    second = store.write_snapshot("NSE:ABC", corrected, datetime(2024, 1, 4, tzinfo=UTC))
     assert first[0].exists() and second[0].exists()
     assert first[0] != second[0]
     assert store.read_latest("NSE:ABC").iloc[0]["close"] == pytest.approx(10.5)
