@@ -186,3 +186,38 @@ def write_event_snapshot(
         json.dump(payload, handle, indent=2, sort_keys=True)
         handle.write("\n")
     return path
+
+def load_event_csv(path: Path) -> list[ScheduledEvent]:
+    """Load an operator-reviewed NSE/BSE export in the documented normalized schema."""
+    import csv
+
+    required = {
+        "event_id", "symbol", "event_type", "event_date", "announced_at",
+        "title", "source_primary", "source_secondary", "verification_status",
+    }
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
+            missing = required.difference(reader.fieldnames or [])
+            raise ValueError(f"event CSV missing columns: {', '.join(sorted(missing))}")
+        events: list[ScheduledEvent] = []
+        for row_number, row in enumerate(reader, start=2):
+            try:
+                events.append(
+                    ScheduledEvent(
+                        event_id=row["event_id"].strip(),
+                        symbol=row["symbol"].strip().upper(),
+                        event_type=EventType(row["event_type"].strip()),
+                        event_date=date.fromisoformat(row["event_date"].strip()),
+                        announced_at=datetime.fromisoformat(row["announced_at"].strip()),
+                        title=row["title"].strip(),
+                        source_primary=row["source_primary"].strip(),
+                        source_secondary=row["source_secondary"].strip(),
+                        verification_status=VerificationStatus(
+                            row["verification_status"].strip()
+                        ),
+                    )
+                )
+            except (ValueError, TypeError) as error:
+                raise ValueError(f"invalid event CSV row {row_number}: {error}") from error
+    return events
