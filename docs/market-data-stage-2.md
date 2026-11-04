@@ -34,3 +34,15 @@
 - Calendar source provenance is retained with each holiday row. NSE currently publishes the holiday schedule as an official web table; this implementation ingests an operator-archived CSV export and deliberately does not scrape dynamic HTML or silently infer exchange holidays.
 - Historical membership is not reconstructed by pretending the current list was always valid. Collect dated snapshots and official effective-date change notices before building exact membership intervals.
 - The Nifty 500 download is an external network operation and has not been exercised against NSE from CI; tests use injected response bytes. A failed download must not replace a previously approved snapshot.
+
+
+## Stage 3B — request reliability and data quarantine
+
+- Added one shared, process-local Kite request pacer: historical candle calls are spaced at no more than 3 requests/second, quote calls at 1/second, and other endpoints at 10/second, matching the currently published Kite API limits.
+- Added bounded retries for HTTP 429, HTTP 5xx, and recognized transient network exceptions. HTTP 400/403 and other non-transient client errors fail immediately. A 429 honors Retry-After when supplied; otherwise the conservative cooldown is 10 seconds.
+- The 10-second fallback reflects Zerodha's published guidance for the throttling cooldown on repeated bad requests. The request pacing and retry settings should be rechecked against Kite's documentation before production rollout.
+- Historical downloads can persist completed date chunks atomically and resume after interruption without refetching completed chunks. Checkpoints are local JSON and must be stored on durable storage; they are not a substitute for the append-only Parquet raw dataset.
+- Invalid OHLCV responses are written to an immutable JSON quarantine record with symbol, requested range, capture time, validation reason, and raw rows. They are not written to the clean Parquet store.
+- The default limiter is process-local and shared across adapter instances in one Python process. It does not coordinate multiple processes or machines. Before multi-worker production, replace it with a distributed limiter keyed by Kite API key (for example, Redis-backed) and add operational metrics/alerts.
+- Retry logic is deliberately narrow: it does not retry invalid requests, expired sessions, permission failures, or unknown exceptions. No credentials, login, or order methods were added.
+- The current test suite uses fake Kite clients and injected clocks/sleep functions. It does not contact Kite or require live credentials.
