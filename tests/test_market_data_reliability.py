@@ -5,7 +5,9 @@ import pytest
 
 from nse_swing_bot.market_data.checkpoints import JsonChunkCheckpointStore
 from nse_swing_bot.market_data.kite_adapter import KiteMarketDataAdapter
+from nse_swing_bot.market_data.parquet_store import ParquetCandleStore
 from nse_swing_bot.market_data.quarantine import DataQualityQuarantine
+from nse_swing_bot.market_data.service import MarketDataService
 from nse_swing_bot.market_data.request_control import (
     KiteRequestExecutor,
     KiteRequestPacer,
@@ -139,3 +141,87 @@ def test_quarantine_writes_raw_payload_and_reason(tmp_path) -> None:
     payload = path.read_text(encoding="utf-8")
     assert "high is inconsistent" in payload
     assert '"symbol": "NSE:ABC"' in payload
+
+
+def test_adapter_resumes_after_later_chunk_failure(tmp_path) -> None:
+    class BadRequest(Exception):
+        status_code = 400
+
+    class FakeKiteClient:
+        def __init__(self) -> None:
+            self.calls: list[date] = []
+            self.fail_second_chunk = True
+
+        def instruments(self, exchange=None):
+            return []
+
+        def historical_data(
+            self, instrument_token, from_date, to_date, interval,
+            continuous=False, oi=False,
+        ):
+            self.calls.append(from_date.date())
+            if from_date.date() == date(2026, 1, 3) and self.fail_second_chunk:
+                raise BadRequest("invalid request")
+            return [{
+                "date": from_date,
+                "open": 10.0,
+                "high": 12.0,
+                "low": 9.0,
+                "close": 11.0,
+                "volume": 100.0,
+            }]
+
+    client = FakeKiteClient()
+    adapter = KiteMarketDataAdapter(
+        client,
+        request_executor=no_wait_executor(),
+        checkpoint_store=JsonChunkCheckpointStore(tmp_path / "checkpoints"),
+    )
+    with pytest.raises(BadRequest):
+        adapter.fetch_daily_candles(
+            123, date(2026, 1, 1), date(2026, 1, 4), chunk_days=2
+        )
+
+    client.fail_second_chunk = False
+    resumed = adapter.fetch_daily_candles(
+        123, date(2026, 1, 1), date(2026, 1, 4), chunk_days=2
+    )
+    assert client.calls == [
+        date(2026, 1, 1),
+        date(2026, 1, 3),
+        date(2026, 1, 3),
+    ]
+    assert len(resumed) == 2
+
+
+def test_market_data_service_quarantines_invalid_candles(tmp_path) -> None:
+    class InvalidAdapter:
+        def fetch_daily_candles(self, instrument_token, start, end, chunk_days=365):
+            return pd.DataFrame(
+                {
+                    "open": [10.0],
+                    "high": [8.0],
+                    "low": [9.0],
+                    "close": [10.0],
+                    "volume": [1.0],
+                },
+                index=pd.to_datetime(["2026-01-01"]),
+            )
+
+    quarantine = DataQualityQuarantine(tmp_path / "quarantine")
+    service = MarketDataService(
+        InvalidAdapter(),
+        ParquetCandleStore(tmp_path / "parquet"),
+        tmp_path / "snapshots",
+        quarantine=quarantine,
+    )
+    instrument = pd.Series(
+        {"exchange": "NSE", "tradingsymbol": "ABC", "instrument_token": 123}
+    )
+    with pytest.raises(ValueError, match="high"):
+        service.sync_daily_history(instrument, date(2026, 1, 1), date(2026, 1, 1))
+
+    quarantined = list((tmp_path / "quarantine").rglob("quarantine-*.json"))
+    assert len(quarantined) == 1
+    assert "high is inconsistent" in quarantined[0].read_text(encoding="utf-8")
+    assert not (tmp_path / "parquet" / "raw").exists()
