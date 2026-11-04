@@ -7,12 +7,12 @@ from nse_swing_bot.market_data.checkpoints import JsonChunkCheckpointStore
 from nse_swing_bot.market_data.kite_adapter import KiteMarketDataAdapter
 from nse_swing_bot.market_data.parquet_store import ParquetCandleStore
 from nse_swing_bot.market_data.quarantine import DataQualityQuarantine
-from nse_swing_bot.market_data.service import MarketDataService
 from nse_swing_bot.market_data.request_control import (
     KiteRequestExecutor,
     KiteRequestPacer,
     RetryPolicy,
 )
+from nse_swing_bot.market_data.service import MarketDataService
 
 
 def no_wait_executor(sleeps: list[float] | None = None) -> KiteRequestExecutor:
