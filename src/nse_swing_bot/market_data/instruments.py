@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -59,8 +59,8 @@ def normalize_instrument_master(rows: list[dict[str, object]]) -> pd.DataFrame:
 
 def save_instrument_snapshot(frame: pd.DataFrame, root: Path, captured_at: datetime | None = None) -> Path:
     """Write a timestamped CSV snapshot; never overwrite a previous instrument master."""
-    captured_at = captured_at or datetime.now(timezone.utc)
-    stamp = captured_at.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    captured_at = captured_at or datetime.now(UTC)
+    stamp = captured_at.astimezone(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     destination = root / "instruments" / f"nse-equities-{stamp}.csv"
     destination.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(destination, index=False)
