@@ -65,7 +65,7 @@ class JsonChunkCheckpointStore:
         fd, temporary = tempfile.mkstemp(prefix=".checkpoint-", dir=path.parent)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                json.dump(payload, handle, default=str, allow_nan=False)
+                json.dump(payload, handle, default=str, allow_nan=True)
                 handle.flush()
                 os.fsync(handle.fileno())
             os.replace(temporary, path)
