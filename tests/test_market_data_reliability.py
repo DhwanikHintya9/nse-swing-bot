@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import pandas as pd
 import pytest
@@ -135,7 +135,7 @@ def test_quarantine_writes_raw_payload_and_reason(tmp_path) -> None:
     path = quarantine.store(
         "NSE:ABC", date(2026, 1, 1), date(2026, 1, 1),
         "high is inconsistent", candles,
-        captured_at=datetime(2026, 1, 2, tzinfo=datetime.now().astimezone().tzinfo),
+        captured_at=datetime(2026, 1, 2, tzinfo=UTC),
     )
     assert path.exists()
     payload = path.read_text(encoding="utf-8")
