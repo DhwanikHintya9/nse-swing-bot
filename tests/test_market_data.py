@@ -7,7 +7,11 @@ from nse_swing_bot.market_data.corporate_actions import (
     AdjustmentEvent,
     apply_verified_adjustments,
 )
-from nse_swing_bot.market_data.instruments import normalize_instrument_master
+from nse_swing_bot.market_data.instruments import (
+    load_nifty500_constituents,
+    normalize_instrument_master,
+)
+from nse_swing_bot.market_data.kite_adapter import KiteMarketDataAdapter
 from nse_swing_bot.market_data.parquet_store import ParquetCandleStore
 from nse_swing_bot.market_data.validation import validate_daily_candles
 
@@ -112,3 +116,74 @@ def test_unverified_adjustment_fails_closed() -> None:
     )
     with pytest.raises(ValueError, match="unverified"):
         apply_verified_adjustments(valid_candles(), [event], "ABC", date(2024, 1, 3))
+
+
+
+def test_validation_rejects_infinite_ohlcv() -> None:
+    candles = valid_candles()
+    candles.iloc[0, candles.columns.get_loc("close")] = float("inf")
+    with pytest.raises(ValueError, match="non-finite"):
+        validate_daily_candles(candles)
+
+
+def test_nifty500_loader_requires_and_records_source(tmp_path) -> None:
+    csv_path = tmp_path / "constituents.csv"
+    pd.DataFrame({"Symbol": ["ABC", "XYZ", "ABC"]}).to_csv(csv_path, index=False)
+    result = load_nifty500_constituents(csv_path, date(2026, 1, 1), "NSE official constituent file")
+    assert result["symbol"].tolist() == ["ABC", "XYZ"]
+    assert result["effective_date"].unique().tolist() == ["2026-01-01"]
+    assert result["source"].unique().tolist() == ["NSE official constituent file"]
+
+
+def test_nifty500_loader_rejects_missing_provenance(tmp_path) -> None:
+    csv_path = tmp_path / "constituents.csv"
+    pd.DataFrame({"Symbol": ["ABC"]}).to_csv(csv_path, index=False)
+    with pytest.raises(ValueError, match="source_name"):
+        load_nifty500_constituents(csv_path, date(2026, 1, 1), "")
+
+
+def test_kite_adapter_fetches_daily_candles_in_sequential_chunks() -> None:
+    class FakeKiteClient:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def instruments(self, exchange=None):
+            return []
+
+        def historical_data(
+            self,
+            instrument_token,
+            from_date,
+            to_date,
+            interval,
+            continuous=False,
+            oi=False,
+        ):
+            self.calls.append((instrument_token, from_date, to_date, interval))
+            return [
+                {
+                    "date": from_date,
+                    "open": 10.0,
+                    "high": 12.0,
+                    "low": 9.0,
+                    "close": 11.0,
+                    "volume": 100.0,
+                }
+            ]
+
+    client = FakeKiteClient()
+    adapter = KiteMarketDataAdapter(client)
+    result = adapter.fetch_daily_candles(
+        123,
+        date(2024, 1, 1),
+        date(2024, 1, 5),
+        chunk_days=2,
+    )
+
+    assert len(client.calls) == 3
+    assert [call[3] for call in client.calls] == ["day", "day", "day"]
+    assert client.calls[0][1].date() == date(2024, 1, 1)
+    assert client.calls[0][2].date() == date(2024, 1, 2)
+    assert client.calls[1][1].date() == date(2024, 1, 3)
+    assert client.calls[2][1].date() == date(2024, 1, 5)
+    assert list(result.columns) == ["open", "high", "low", "close", "volume"]
