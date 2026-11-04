@@ -150,9 +150,9 @@ def test_event_csv_loader_parses_normalized_reviewed_export(tmp_path):
     path = tmp_path / "events.csv"
     path.write_text(
         "event_id,symbol,event_type,event_date,announced_at,title,source_primary,"
-        "source_secondary,verification_status\\n"
+        "source_secondary,verification_status\n"
         f"e1,abc,earnings,2026-11-08,2026-11-03T12:00:00+00:00,Results,{PRIMARY},"
-        f"{SECONDARY},verified\\n",
+        f"{SECONDARY},verified\n",
         encoding="utf-8",
     )
     loaded = load_event_csv(path)
@@ -165,9 +165,9 @@ def test_event_csv_loader_rejects_unknown_event_type(tmp_path):
     path = tmp_path / "events.csv"
     path.write_text(
         "event_id,symbol,event_type,event_date,announced_at,title,source_primary,"
-        "source_secondary,verification_status\\n"
+        "source_secondary,verification_status\n"
         f"e1,ABC,guess,2026-11-08,2026-11-03T12:00:00+00:00,Unknown,{PRIMARY},"
-        f"{SECONDARY},verified\\n",
+        f"{SECONDARY},verified\n",
         encoding="utf-8",
     )
     with pytest.raises(ValueError, match="invalid event CSV row"):
