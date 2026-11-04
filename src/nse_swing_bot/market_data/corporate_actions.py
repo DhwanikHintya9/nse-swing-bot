@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+import math
 
 import pandas as pd
 
@@ -51,7 +52,12 @@ def apply_verified_adjustments(
             raise ValueError(f"unverified corporate action blocks adjustment: {event.event_id}")
         if not event.source_primary.strip() or not event.source_secondary.strip():
             raise ValueError(f"corporate action lacks two source references: {event.event_id}")
-        if not (0 < event.price_factor <= 1.5 and 0 < event.volume_factor <= 100):
+        if not (
+            math.isfinite(event.price_factor)
+            and math.isfinite(event.volume_factor)
+            and event.price_factor > 0
+            and event.volume_factor > 0
+        ):
             raise ValueError(f"invalid adjustment factors: {event.event_id}")
         eligible.append(event)
 
