@@ -44,6 +44,11 @@ class KiteRequestPacer:
             self._last_request[endpoint] = self._monotonic()
 
 
+# All adapters in this process share one limiter. Multi-process deployments must
+# replace this with a distributed limiter keyed by the Kite API key.
+DEFAULT_KITE_REQUEST_PACER = KiteRequestPacer()
+
+
 @dataclass(frozen=True)
 class RetryPolicy:
     max_attempts: int = 4
@@ -106,7 +111,7 @@ class KiteRequestExecutor:
         policy: RetryPolicy | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
-        self.pacer = pacer or KiteRequestPacer(sleep=sleep)
+        self.pacer = pacer or DEFAULT_KITE_REQUEST_PACER
         self.policy = policy or RetryPolicy()
         self.sleep = sleep
 
