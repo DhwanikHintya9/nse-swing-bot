@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 
 import pandas as pd
 
-from nse_swing_bot.market_data.instruments import load_nifty500_constituents
+from nse_swing_bot.market_data.instruments import normalize_nifty500_constituents
 
 NIFTY_500_CSV_URL = "https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv"
 
@@ -34,22 +34,12 @@ def download_nifty500_constituents(
     if not payload:
         raise ValueError("NSE Nifty 500 download returned an empty response")
     frame = pd.read_csv(BytesIO(payload))
-    symbols = load_nifty500_constituents(
-        _frame_to_csv_bytes(frame),
+    return normalize_nifty500_constituents(
+        frame,
         effective_date=effective_date,
         source_name=NIFTY_500_CSV_URL,
         expected_count=expected_count,
     )
-    return symbols
-
-
-def _frame_to_csv_bytes(frame: pd.DataFrame) -> BytesIO:
-    """Adapt a parsed response to the shared, strict constituent validator."""
-    buffer = BytesIO()
-    frame.to_csv(buffer, index=False)
-    buffer.seek(0)
-    # The existing loader accepts a path, so this helper is not used directly.
-    raise NotImplementedError("internal adapter should not be called")
 
 
 def _download_bytes(url: str) -> bytes:
