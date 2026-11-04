@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from threading import Lock
-from typing import Any, Callable
+from typing import Any
 
 ENDPOINT_INTERVAL_SECONDS = {
     "quote": 1.0,
