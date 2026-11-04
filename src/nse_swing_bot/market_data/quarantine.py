@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import tempfile
 from datetime import UTC, date, datetime
 from pathlib import Path
