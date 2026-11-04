@@ -51,8 +51,14 @@ def normalize_instrument_master(rows: list[dict[str, object]]) -> pd.DataFrame:
     ).astype("int64")
     frame["tick_size"] = pd.to_numeric(frame["tick_size"], errors="raise").astype("float64")
     frame["lot_size"] = pd.to_numeric(frame["lot_size"], errors="raise").astype("int64")
-    if (frame["instrument_token"] <= 0).any() or (frame["tick_size"] <= 0).any():
-        raise ValueError("instrument tokens and tick sizes must be positive")
+    if (
+        (frame["instrument_token"] <= 0).any()
+        or (frame["tick_size"] <= 0).any()
+        or (frame["lot_size"] <= 0).any()
+    ):
+        raise ValueError("instrument tokens, tick sizes, and lot sizes must be positive")
+    if frame["instrument_token"].duplicated().any():
+        raise ValueError("NSE equity instrument tokens must be unique")
     if frame["tradingsymbol"].isna().any() or frame["tradingsymbol"].duplicated().any():
         raise ValueError("NSE equity trading symbols must be present and unique")
 
@@ -66,9 +72,13 @@ def save_instrument_snapshot(
 ) -> Path:
     """Write a timestamped CSV snapshot; never overwrite a previous instrument master."""
     captured_at = captured_at or datetime.now(UTC)
+    if captured_at.tzinfo is None:
+        raise ValueError("captured_at must be timezone-aware")
     stamp = captured_at.astimezone(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     destination = root / "instruments" / f"nse-equities-{stamp}.csv"
     destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        raise FileExistsError("refusing to overwrite instrument snapshot: " + str(destination))
     frame.to_csv(destination, index=False)
     return destination
 
@@ -77,6 +87,7 @@ def load_nifty500_constituents(
     csv_path: Path,
     effective_date: date,
     source_name: str,
+    expected_count: int | None = 500,
 ) -> pd.DataFrame:
     """Load an explicitly sourced constituent CSV; no guessed or hardcoded universe."""
     if not source_name.strip():
@@ -89,6 +100,10 @@ def load_nifty500_constituents(
     symbols = symbols.dropna().loc[lambda values: values.ne("")].drop_duplicates()
     if symbols.empty:
         raise ValueError("constituent CSV contains no valid symbols")
+    if expected_count is not None and len(symbols) != expected_count:
+        raise ValueError(
+            f"expected {expected_count} unique constituents, received {len(symbols)}"
+        )
 
     return pd.DataFrame(
         {
