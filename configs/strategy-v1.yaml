@@ -1,0 +1,56 @@
+strategy:
+  id: nse-daily-pullback
+  version: 1.0.0
+  direction: long_only
+  timeframe: 1d
+  minimum_completed_candles: 250
+
+indicators:
+  trend:
+    type: sma
+    period: 50
+    condition: close_above
+  momentum:
+    type: wilder_rsi
+    period: 14
+    condition: less_than
+    threshold: 45
+  volume:
+    average_period: 20
+    include_signal_candle: true
+    condition: greater_than_average
+  volatility:
+    type: wilder_atr
+    period: 14
+
+entry:
+  execution_session: next_trading_session
+  max_upward_gap_pct: 2.0
+  limit_price_from_signal_close_pct: 2.0
+  window_start_ist: "09:15"
+  window_end_ist: "09:45"
+  cancel_unfilled_remainder_at_session_end: true
+
+risk:
+  risk_per_trade_equity_pct: 1.0
+  initial_stop_atr_multiple: 1.5
+  fixed_target_r_multiple: 2.0
+  max_open_positions: 10
+  max_combined_open_risk_equity_pct: 4.0
+  max_stock_allocation_equity_pct: 15.0
+  max_portfolio_deployment_equity_pct: 80.0
+  max_sector_allocation_equity_pct: 25.0
+
+trailing:
+  method: chandelier
+  highest_high_period: 14
+  atr_multiple: 2.5
+  activation_r_multiple: 1.0
+  activation_effective_session: following_session
+  exit_condition: completed_daily_close_below_previous_active_stop
+  stop_is_monotonic: true
+
+portfolio:
+  cooldown_completed_sessions_after_exit: 3
+  allow_averaging_down: false
+  allow_pyramiding: false
