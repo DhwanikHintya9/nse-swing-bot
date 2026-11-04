@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 OHLCV_COLUMNS = ["open", "high", "low", "close", "volume"]
@@ -26,6 +27,8 @@ def validate_daily_candles(
     index = pd.DatetimeIndex(pd.to_datetime(candles.index, errors="raise"))
     if index.tz is not None:
         index = index.tz_convert("Asia/Kolkata").tz_localize(None)
+    if index.isna().any():
+        raise ValueError("candle dates contain invalid timestamps")
     result.index = index.normalize()
     result.index.name = "date"
     result = result.sort_index()
@@ -34,8 +37,9 @@ def validate_daily_candles(
         raise ValueError("duplicate daily candle dates detected")
     for column in OHLCV_COLUMNS:
         result[column] = pd.to_numeric(result[column], errors="raise").astype("float64")
-    if result[OHLCV_COLUMNS].isna().any().any():
-        raise ValueError("candle data contains missing OHLCV values")
+    values = result[OHLCV_COLUMNS].to_numpy(dtype="float64")
+    if not np.isfinite(values).all():
+        raise ValueError("candle data contains missing or non-finite OHLCV values")
     if (result[["open", "high", "low", "close"]] <= 0).any().any():
         raise ValueError("OHLC prices must be positive")
     if (result["volume"] < 0).any():
