@@ -10,6 +10,7 @@ from nse_swing_bot.market_data.corporate_actions import (
 from nse_swing_bot.market_data.instruments import (
     load_nifty500_constituents,
     normalize_instrument_master,
+    save_instrument_snapshot,
 )
 from nse_swing_bot.market_data.kite_adapter import KiteMarketDataAdapter
 from nse_swing_bot.market_data.parquet_store import ParquetCandleStore
@@ -129,7 +130,9 @@ def test_validation_rejects_infinite_ohlcv() -> None:
 def test_nifty500_loader_requires_and_records_source(tmp_path) -> None:
     csv_path = tmp_path / "constituents.csv"
     pd.DataFrame({"Symbol": ["ABC", "XYZ", "ABC"]}).to_csv(csv_path, index=False)
-    result = load_nifty500_constituents(csv_path, date(2026, 1, 1), "NSE official constituent file")
+    result = load_nifty500_constituents(
+        csv_path, date(2026, 1, 1), "NSE official constituent file", expected_count=2
+    )
     assert result["symbol"].tolist() == ["ABC", "XYZ"]
     assert result["effective_date"].unique().tolist() == ["2026-01-01"]
     assert result["source"].unique().tolist() == ["NSE official constituent file"]
@@ -139,7 +142,7 @@ def test_nifty500_loader_rejects_missing_provenance(tmp_path) -> None:
     csv_path = tmp_path / "constituents.csv"
     pd.DataFrame({"Symbol": ["ABC"]}).to_csv(csv_path, index=False)
     with pytest.raises(ValueError, match="source_name"):
-        load_nifty500_constituents(csv_path, date(2026, 1, 1), "")
+        load_nifty500_constituents(csv_path, date(2026, 1, 1), "", expected_count=1)
 
 
 def test_kite_adapter_fetches_daily_candles_in_sequential_chunks() -> None:
@@ -187,3 +190,16 @@ def test_kite_adapter_fetches_daily_candles_in_sequential_chunks() -> None:
     assert client.calls[1][1].date() == date(2024, 1, 3)
     assert client.calls[2][1].date() == date(2024, 1, 5)
     assert list(result.columns) == ["open", "high", "low", "close", "volume"]
+
+
+
+def test_instrument_snapshot_is_immutable_and_requires_aware_timestamp(tmp_path) -> None:
+    frame = pd.DataFrame({"tradingsymbol": ["ABC"]})
+    with pytest.raises(ValueError, match="timezone-aware"):
+        save_instrument_snapshot(frame, tmp_path, datetime(2026, 1, 1))
+
+    captured_at = datetime(2026, 1, 1, tzinfo=UTC)
+    first = save_instrument_snapshot(frame, tmp_path, captured_at)
+    assert first.exists()
+    with pytest.raises(FileExistsError, match="overwrite"):
+        save_instrument_snapshot(frame, tmp_path, captured_at)
