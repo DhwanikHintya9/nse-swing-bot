@@ -49,7 +49,12 @@ class ParquetCandleStore:
 
         return paths
 
-    def read_latest(self, symbol: str, start: str | None = None, end: str | None = None) -> pd.DataFrame:
+    def read_latest(
+        self,
+        symbol: str,
+        start: str | None = None,
+        end: str | None = None,
+    ) -> pd.DataFrame:
         base = self.root / "raw" / "daily" / f"symbol={safe_symbol(symbol)}"
         if not base.exists():
             return pd.DataFrame(columns=["open", "high", "low", "close", "volume"])
