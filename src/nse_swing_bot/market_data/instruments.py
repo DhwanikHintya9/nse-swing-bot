@@ -124,6 +124,28 @@ def load_nifty500_constituents(
     )
 
 
+def save_nifty500_snapshot(frame: pd.DataFrame, root: Path) -> Path:
+    """Persist a dated universe snapshot without replacing an existing date."""
+    required = {"symbol", "effective_date", "source"}
+    missing = required.difference(frame.columns)
+    if missing:
+        raise ValueError(f"universe snapshot missing columns: {', '.join(sorted(missing))}")
+    dates = frame["effective_date"].astype("string").drop_duplicates()
+    if len(dates) != 1:
+        raise ValueError("universe snapshot must contain exactly one effective date")
+    effective_date = pd.Timestamp(dates.iloc[0]).date()
+    if frame["symbol"].isna().any() or frame["symbol"].duplicated().any():
+        raise ValueError("universe snapshot symbols must be present and unique")
+    if frame["source"].isna().any() or frame["source"].astype("string").str.strip().eq("").any():
+        raise ValueError("universe snapshot source provenance is required")
+    destination = root / "universe" / f"nifty500-effective-{effective_date.isoformat()}.csv"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        raise FileExistsError("refusing to overwrite universe snapshot: " + str(destination))
+    frame.sort_values("symbol").to_csv(destination, index=False)
+    return destination
+
+
 def safe_symbol(symbol: str) -> str:
     """Make an exchange symbol safe for use as a directory name."""
     cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", symbol.strip())
