@@ -40,7 +40,7 @@ class ParquetCandleStore:
             )
             destination.parent.mkdir(parents=True, exist_ok=True)
             if destination.exists():
-                raise FileExistsError(f\"refusing to overwrite raw snapshot: {destination}\")
+                raise FileExistsError("refusing to overwrite raw snapshot: " + str(destination))
             output = partition.reset_index()
             output["captured_at_utc"] = captured_at
             output["symbol"] = symbol
