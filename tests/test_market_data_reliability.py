@@ -83,8 +83,7 @@ def test_checkpoint_store_round_trips_records_and_rejects_mismatched_key(tmp_pat
     records = [{"date": "2026-01-01", "close": 123.4}]
     store.save(123, date(2026, 1, 1), date(2026, 1, 2), 2, records)
     assert store.load(123, date(2026, 1, 1), date(2026, 1, 2), 2) == records
-    with pytest.raises(ValueError, match="range mismatch"):
-        store.load(123, date(2026, 1, 1), date(2026, 1, 3), 2)
+    assert store.load(123, date(2026, 1, 1), date(2026, 1, 3), 2) is None
 
 
 def test_adapter_resumes_completed_chunks_without_refetching(tmp_path) -> None:
