@@ -46,7 +46,9 @@ def normalize_instrument_master(rows: list[dict[str, object]]) -> pd.DataFrame:
     if frame.empty:
         raise ValueError("Kite instrument master contains no NSE cash-equity instruments")
 
-    frame["instrument_token"] = pd.to_numeric(frame["instrument_token"], errors="raise").astype("int64")
+    frame["instrument_token"] = pd.to_numeric(
+        frame["instrument_token"], errors="raise"
+    ).astype("int64")
     frame["tick_size"] = pd.to_numeric(frame["tick_size"], errors="raise").astype("float64")
     frame["lot_size"] = pd.to_numeric(frame["lot_size"], errors="raise").astype("int64")
     if (frame["instrument_token"] <= 0).any() or (frame["tick_size"] <= 0).any():
@@ -57,7 +59,11 @@ def normalize_instrument_master(rows: list[dict[str, object]]) -> pd.DataFrame:
     return frame.sort_values("tradingsymbol").reset_index(drop=True)
 
 
-def save_instrument_snapshot(frame: pd.DataFrame, root: Path, captured_at: datetime | None = None) -> Path:
+def save_instrument_snapshot(
+    frame: pd.DataFrame,
+    root: Path,
+    captured_at: datetime | None = None,
+) -> Path:
     """Write a timestamped CSV snapshot; never overwrite a previous instrument master."""
     captured_at = captured_at or datetime.now(UTC)
     stamp = captured_at.astimezone(UTC).strftime("%Y%m%dT%H%M%S%fZ")
