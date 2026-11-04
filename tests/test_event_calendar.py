@@ -172,3 +172,21 @@ def test_event_csv_loader_rejects_unknown_event_type(tmp_path):
     )
     with pytest.raises(ValueError, match="invalid event CSV row"):
         load_event_csv(path)
+
+def test_verified_critical_action_still_requires_manual_review():
+    result = evaluate_event_entry(
+        "ABC",
+        DECISION,
+        date(2026, 11, 5),
+        [event(EventType.CRITICAL_CORPORATE_ACTION)],
+        coverage(),
+    )
+    assert not result.allowed
+    assert "critical_corporate_action_requires_manual_review:ABC-EVENT-1" in result.reasons
+
+
+def test_entry_date_before_decision_date_is_rejected():
+    with pytest.raises(ValueError, match="cannot precede"):
+        evaluate_event_entry(
+            "ABC", DECISION, date(2026, 11, 3), [], coverage()
+        )
