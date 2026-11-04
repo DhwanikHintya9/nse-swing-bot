@@ -99,7 +99,16 @@ def _is_transient(error: Exception) -> bool:
         return True
     if status is not None:
         return False
-    return isinstance(error, (TimeoutError, ConnectionError, OSError))
+    transient_names = {
+        "NetworkException",
+        "ReadTimeout",
+        "ConnectTimeout",
+        "ConnectionError",
+        "Timeout",
+    }
+    return isinstance(error, (TimeoutError, ConnectionError, OSError)) or (
+        error.__class__.__name__ in transient_names
+    )
 
 
 class KiteRequestExecutor:
