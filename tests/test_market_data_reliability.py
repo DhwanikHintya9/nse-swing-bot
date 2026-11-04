@@ -1,5 +1,4 @@
 from datetime import date, datetime
-from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -34,6 +33,8 @@ def test_pacer_applies_endpoint_specific_spacing() -> None:
     pacer.wait("historical")
     pacer.wait("historical")
     pacer.wait("other")
+    pacer.wait("other")
+    pacer.wait("quote")
     pacer.wait("quote")
 
     assert sleeps == pytest.approx([1 / 3, 0.1, 1.0])
