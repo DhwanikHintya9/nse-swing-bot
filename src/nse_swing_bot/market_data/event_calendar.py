@@ -46,6 +46,7 @@ class ScheduledEvent:
             raise ValueError("announced_at must be timezone-aware")
         _validate_source(self.source_primary, "source_primary")
         _validate_source(self.source_secondary, "source_secondary")
+        _validate_independent_sources(self.source_primary, self.source_secondary)
 
 
 @dataclass(frozen=True)
@@ -67,6 +68,7 @@ class EventCoverage:
             raise ValueError("coverage captured_at must be timezone-aware")
         _validate_source(self.source_primary, "coverage source_primary")
         _validate_source(self.source_secondary, "coverage source_secondary")
+        _validate_independent_sources(self.source_primary, self.source_secondary)
 
 
 @dataclass(frozen=True)
@@ -79,6 +81,11 @@ def _validate_source(value: str, field: str) -> None:
     parsed = urlparse(value)
     if parsed.scheme not in {"https", "http"} or not parsed.netloc:
         raise ValueError(f"{field} must be an absolute http(s) source URL")
+
+
+def _validate_independent_sources(primary: str, secondary: str) -> None:
+    if urlparse(primary).netloc.lower() == urlparse(secondary).netloc.lower():
+        raise ValueError("primary and secondary sources must use independent domains")
 
 
 def evaluate_event_entry(
@@ -158,6 +165,12 @@ def write_event_snapshot(
         raise ValueError("captured_at must be timezone-aware")
     if any(item.captured_at > captured_at for item in coverage):
         raise ValueError("coverage cannot be captured after the snapshot")
+    event_ids = [item.event_id for item in events]
+    if len(event_ids) != len(set(event_ids)):
+        raise ValueError("event snapshot contains duplicate event IDs")
+    coverage_symbols = [item.symbol for item in coverage]
+    if len(coverage_symbols) != len(set(coverage_symbols)):
+        raise ValueError("event snapshot contains duplicate coverage symbols")
     payload = {
         "schema_version": 1,
         "captured_at": captured_at.isoformat(),
