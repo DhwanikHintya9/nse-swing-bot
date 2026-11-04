@@ -70,7 +70,7 @@ class KiteMarketDataAdapter:
                 to_dt = datetime.combine(chunk_end, time.max.replace(microsecond=0))
                 chunk_records = self._requests.call(
                     "historical",
-                    lambda: self._client.historical_data(
+                    lambda from_dt=from_dt, to_dt=to_dt: self._client.historical_data(
                         instrument_token=instrument_token,
                         from_date=from_dt,
                         to_date=to_dt,
