@@ -11,6 +11,9 @@ from typing import Any, Protocol
 
 import pandas as pd
 
+from nse_swing_bot.market_data.checkpoints import JsonChunkCheckpointStore
+from nse_swing_bot.market_data.request_control import KiteRequestExecutor
+
 
 class KiteMarketClient(Protocol):
     def instruments(self, exchange: str | None = None) -> list[dict[str, Any]]: ...
@@ -26,12 +29,19 @@ class KiteMarketClient(Protocol):
 
 
 class KiteMarketDataAdapter:
-    def __init__(self, client: KiteMarketClient) -> None:
+    def __init__(
+        self,
+        client: KiteMarketClient,
+        request_executor: KiteRequestExecutor | None = None,
+        checkpoint_store: JsonChunkCheckpointStore | None = None,
+    ) -> None:
         self._client = client
+        self._requests = request_executor or KiteRequestExecutor()
+        self._checkpoints = checkpoint_store
 
     def fetch_nse_instruments(self) -> list[dict[str, Any]]:
-        """Fetch the current Kite instrument dump and leave filtering to the normalizer."""
-        return self._client.instruments("NSE")
+        """Fetch the current Kite instrument dump with the general endpoint limit."""
+        return self._requests.call("other", lambda: self._client.instruments("NSE"))
 
     def fetch_daily_candles(
         self,
@@ -40,12 +50,7 @@ class KiteMarketDataAdapter:
         end: date,
         chunk_days: int = 365,
     ) -> pd.DataFrame:
-        """Fetch daily candles in bounded, sequential chunks.
-
-        The caller supplies the token from a current or historically cached
-        instrument master. Chunking is conservative and configurable; no
-        concurrency is used, so API pacing can be centrally controlled later.
-        """
+        """Fetch daily candles sequentially, resuming from durable completed chunks."""
         if start > end:
             raise ValueError("start must be on or before end")
         if chunk_days < 1:
@@ -55,17 +60,30 @@ class KiteMarketDataAdapter:
         cursor = start
         while cursor <= end:
             chunk_end = min(end, cursor + timedelta(days=chunk_days - 1))
-            from_dt = datetime.combine(cursor, time.min)
-            to_dt = datetime.combine(chunk_end, time.max.replace(microsecond=0))
-            chunk = self._client.historical_data(
-                instrument_token=instrument_token,
-                from_date=from_dt,
-                to_date=to_dt,
-                interval="day",
-                continuous=False,
-                oi=False,
+            chunk_records = (
+                self._checkpoints.load(instrument_token, cursor, chunk_end, chunk_days)
+                if self._checkpoints is not None
+                else None
             )
-            records.extend(chunk)
+            if chunk_records is None:
+                from_dt = datetime.combine(cursor, time.min)
+                to_dt = datetime.combine(chunk_end, time.max.replace(microsecond=0))
+                chunk_records = self._requests.call(
+                    "historical",
+                    lambda: self._client.historical_data(
+                        instrument_token=instrument_token,
+                        from_date=from_dt,
+                        to_date=to_dt,
+                        interval="day",
+                        continuous=False,
+                        oi=False,
+                    ),
+                )
+                if self._checkpoints is not None:
+                    self._checkpoints.save(
+                        instrument_token, cursor, chunk_end, chunk_days, chunk_records
+                    )
+            records.extend(chunk_records)
             cursor = chunk_end + timedelta(days=1)
 
         if not records:
