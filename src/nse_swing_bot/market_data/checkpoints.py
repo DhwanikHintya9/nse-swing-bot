@@ -1,4 +1,4 @@
-"""Atomic JSON checkpoints for resumable historical candle downloads."""
+"""Atomic JSON checkpoints for validated historical candle chunks."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import Any
 
 
 class JsonChunkCheckpointStore:
-    """Persist successful chunks so a restarted sync does not refetch them."""
+    """Persist validated chunks so a restarted sync does not refetch good data."""
 
     def __init__(self, root: Path) -> None:
         self.root = root
@@ -21,6 +21,8 @@ class JsonChunkCheckpointStore:
     ) -> Path:
         if instrument_token <= 0 or chunk_days < 1:
             raise ValueError("instrument_token and chunk_days must be positive")
+        if start > end:
+            raise ValueError("checkpoint start must be on or before end")
         return (
             self.root
             / f"token={instrument_token}"
@@ -65,7 +67,7 @@ class JsonChunkCheckpointStore:
         fd, temporary = tempfile.mkstemp(prefix=".checkpoint-", dir=path.parent)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                json.dump(payload, handle, default=str, allow_nan=True)
+                json.dump(payload, handle, default=str, allow_nan=False)
                 handle.flush()
                 os.fsync(handle.fileno())
             os.replace(temporary, path)
@@ -73,3 +75,9 @@ class JsonChunkCheckpointStore:
             Path(temporary).unlink(missing_ok=True)
             raise
         return path
+
+    def delete(
+        self, instrument_token: int, start: date, end: date, chunk_days: int
+    ) -> None:
+        """Remove a corrupt or no-longer-valid cached chunk."""
+        self._path(instrument_token, start, end, chunk_days).unlink(missing_ok=True)
