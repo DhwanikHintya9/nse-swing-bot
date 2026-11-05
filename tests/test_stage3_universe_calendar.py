@@ -226,3 +226,97 @@ def test_archived_nifty500_snapshot_matches_september_2026_reconstitution() -> N
     published_symbols = set(normalized["symbol"])
     assert additions <= published_symbols
     assert exclusions.isdisjoint(published_symbols)
+
+
+def test_acquire_and_save_uses_verified_501_row_default(tmp_path) -> None:
+    from pathlib import Path
+
+    source_path = (
+        Path(__file__).resolve().parents[1]
+        / "data"
+        / "universe"
+        / "source"
+        / "nse-nifty500-captured-2026-11-05.csv"
+    )
+    saved_path = acquire_and_save_nifty500_snapshot(
+        tmp_path,
+        date(2026, 9, 30),
+        downloader=lambda _: source_path.read_bytes(),
+    )
+    saved = pd.read_csv(saved_path)
+    assert len(saved) == 501
+    assert {"company_name", "industry", "series", "isin_code"} <= set(saved.columns)
+
+
+def test_nse_downloader_retries_network_timeout_and_uses_browser_headers(monkeypatch) -> None:
+    from urllib.error import URLError
+
+    from nse_swing_bot.market_data import nse_sources
+
+    sleeps: list[float] = []
+    requests = []
+
+    class FakeHeaders:
+        def get_content_type(self):
+            return "text/csv"
+
+    class FakeResponse:
+        status = 200
+        headers = FakeHeaders()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def read(self):
+            return b"Company Name,Industry,Symbol,Series,ISIN Code\n"
+
+    def fake_urlopen(request, timeout):
+        requests.append((request, timeout))
+        if len(requests) == 1:
+            raise URLError("read timed out")
+        return FakeResponse()
+
+    monkeypatch.setattr(nse_sources, "urlopen", fake_urlopen)
+    monkeypatch.setattr(nse_sources.time, "sleep", sleeps.append)
+
+    assert nse_sources._download_bytes(NIFTY_500_CSV_URL).startswith(b"Company Name")
+    assert len(requests) == 2
+    assert requests[0][1] == 60
+    assert requests[0][0].get_header("User-agent") == nse_sources.NSE_USER_AGENT
+    assert requests[0][0].get_header("Accept").startswith("text/csv")
+    assert sleeps == [1.0]
+
+
+def test_nse_downloader_rejects_html_instead_of_parsing_error_page(monkeypatch) -> None:
+    from nse_swing_bot.market_data import nse_sources
+
+    class FakeHeaders:
+        def get_content_type(self):
+            return "text/html"
+
+    class FakeResponse:
+        status = 200
+        headers = FakeHeaders()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def read(self):
+            return b"<html>blocked</html>"
+
+    calls = []
+
+    def fake_urlopen(request, timeout):
+        calls.append(request)
+        return FakeResponse()
+
+    monkeypatch.setattr(nse_sources, "urlopen", fake_urlopen)
+    with pytest.raises(ValueError, match="unexpected content type"):
+        nse_sources._download_bytes(NIFTY_500_CSV_URL)
+    assert len(calls) == 1
