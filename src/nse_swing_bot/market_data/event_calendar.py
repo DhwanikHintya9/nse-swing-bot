@@ -113,7 +113,7 @@ def evaluate_event_entry(
         raise ValueError("event block windows cannot be negative")
 
     reasons: list[str] = []
-    required_through = decision_at.date() + timedelta(days=earnings_block_days)
+    required_through = entry_date + timedelta(days=earnings_block_days)
     if coverage is None:
         reasons.append("missing_event_coverage")
     else:
@@ -140,7 +140,7 @@ def evaluate_event_entry(
             if event.event_type == EventType.EARNINGS
             else material_action_block_days
         )
-        if not decision_at.date() <= event.event_date <= decision_at.date() + timedelta(days=window):
+        if not entry_date <= event.event_date <= entry_date + timedelta(days=window):
             continue
         if event.verification_status != VerificationStatus.VERIFIED:
             reasons.append(f"event_requires_manual_review:{event.event_id}")
