@@ -46,7 +46,10 @@ class KiteMarketDataAdapter:
 
     @staticmethod
     def _frame_from_records(records: list[dict[str, Any]]) -> pd.DataFrame:
-        raw = pd.DataFrame.from_records(records)
+        try:
+            raw = pd.DataFrame.from_records(records)
+        except (TypeError, ValueError) as error:
+            raise CandleDataError(f"malformed Kite historical response: {error}", pd.DataFrame()) from error
         if "date" not in raw.columns:
             raise CandleDataError("Kite historical response did not include candle dates", raw)
         try:
@@ -68,6 +71,23 @@ class KiteMarketDataAdapter:
         lower, upper = pd.Timestamp(start), pd.Timestamp(end)
         return sessions[(sessions >= lower) & (sessions <= upper)]
 
+    def _validate_chunk(
+        self,
+        records: list[dict[str, Any]],
+        start: date,
+        end: date,
+        expected_sessions: pd.DatetimeIndex | None,
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        raw_frame = self._frame_from_records(records)
+        try:
+            validated = validate_daily_candles(
+                raw_frame,
+                expected_sessions=self._sessions_for_chunk(expected_sessions, start, end),
+            )
+        except (ValueError, TypeError, KeyError) as error:
+            raise CandleDataError(str(error), raw_frame) from error
+        return raw_frame, validated
+
     def fetch_daily_candles(
         self,
         instrument_token: int,
@@ -88,11 +108,28 @@ class KiteMarketDataAdapter:
         cursor = start
         while cursor <= end:
             chunk_end = min(end, cursor + timedelta(days=chunk_days - 1))
-            chunk_records = (
-                self._checkpoints.load(instrument_token, cursor, chunk_end, chunk_days)
-                if self._checkpoints is not None
-                else None
-            )
+            chunk_records = None
+            if self._checkpoints is not None:
+                try:
+                    chunk_records = self._checkpoints.load(
+                        instrument_token, cursor, chunk_end, chunk_days
+                    )
+                except (ValueError, OSError):
+                    # Corrupt or unreadable checkpoints are cache misses, not fatal data.
+                    self._checkpoints.delete(instrument_token, cursor, chunk_end, chunk_days)
+                    chunk_records = None
+
+            validated = None
+            if chunk_records is not None:
+                try:
+                    _, validated = self._validate_chunk(
+                        chunk_records, cursor, chunk_end, expected_sessions
+                    )
+                except CandleDataError:
+                    # A bad cache entry must never poison every future sync.
+                    self._checkpoints.delete(instrument_token, cursor, chunk_end, chunk_days)
+                    chunk_records = None
+
             if chunk_records is None:
                 from_dt = datetime.combine(cursor, time.min)
                 to_dt = datetime.combine(chunk_end, time.max.replace(microsecond=0))
@@ -107,28 +144,23 @@ class KiteMarketDataAdapter:
                         oi=False,
                     ),
                 )
-
-            raw_frame = self._frame_from_records(chunk_records)
-            try:
-                validated = validate_daily_candles(
-                    raw_frame,
-                    expected_sessions=self._sessions_for_chunk(
-                        expected_sessions, cursor, chunk_end
-                    ),
-                )
-            except (ValueError, TypeError, KeyError) as error:
+                try:
+                    _, validated = self._validate_chunk(
+                        chunk_records, cursor, chunk_end, expected_sessions
+                    )
+                except CandleDataError:
+                    if self._checkpoints is not None:
+                        self._checkpoints.delete(
+                            instrument_token, cursor, chunk_end, chunk_days
+                        )
+                    raise
                 if self._checkpoints is not None:
-                    self._checkpoints.delete(instrument_token, cursor, chunk_end, chunk_days)
-                raise CandleDataError(str(error), raw_frame) from error
+                    normalized_records = validated.reset_index().to_dict(orient="records")
+                    self._checkpoints.save(
+                        instrument_token, cursor, chunk_end, chunk_days, normalized_records
+                    )
 
-            if self._checkpoints is not None and chunk_records is not None:
-                # Store normalized, validated rows, never an unvalidated upstream payload.
-                normalized_records = (
-                    validated.reset_index().to_dict(orient="records")
-                )
-                self._checkpoints.save(
-                    instrument_token, cursor, chunk_end, chunk_days, normalized_records
-                )
+            assert validated is not None
             validated_chunks.append(validated)
             cursor = chunk_end + timedelta(days=1)
 
