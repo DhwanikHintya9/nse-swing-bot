@@ -36,6 +36,8 @@ class JsonChunkCheckpointStore:
         if not path.exists():
             return None
         payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("checkpoint payload must be a JSON object")
         if payload.get("instrument_token") != instrument_token:
             raise ValueError("checkpoint instrument token mismatch")
         if payload.get("start") != start.isoformat() or payload.get("end") != end.isoformat():
