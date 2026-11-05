@@ -215,6 +215,22 @@ def test_primary_and_secondary_subdomains_are_not_independent():
         event(source_secondary="https://filings.nseindia.com/another-page")
 
 
+def test_independent_co_in_domains_are_not_mistaken_for_one_source():
+    # Different registrable domains under India's .co.in suffix are independent.
+    event(
+        source_primary="https://www.issuer.co.in/announcements",
+        source_secondary="https://www.vendor.co.in/filings",
+    )
+
+
+def test_sibling_subdomains_under_co_in_are_not_independent():
+    with pytest.raises(ValueError, match="independent domains"):
+        event(
+            source_primary="https://www.issuer.co.in/announcements",
+            source_secondary="https://filings.issuer.co.in/results",
+        )
+
+
 def test_event_coverage_csv_loader_parses_reviewed_manifest(tmp_path):
     from nse_swing_bot.market_data.event_calendar import load_event_coverage_csv
 
