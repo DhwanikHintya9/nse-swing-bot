@@ -23,7 +23,7 @@ def coverage(**overrides):
     values = {
         "symbol": "ABC",
         "covered_from": date(2026, 11, 1),
-        "covered_through": date(2026, 11, 9),
+        "covered_through": date(2026, 11, 10),
         "captured_at": datetime(2026, 11, 4, 9, 0, tzinfo=UTC),
         "source_primary": PRIMARY,
         "source_secondary": SECONDARY,
@@ -122,7 +122,7 @@ def test_future_announcement_is_not_visible_to_historical_decision():
 
 def test_coverage_must_be_available_at_decision_and_cover_full_horizon():
     late = coverage(captured_at=DECISION + timedelta(seconds=1))
-    short = coverage(covered_through=date(2026, 11, 8))
+    short = coverage(covered_through=date(2026, 11, 9))
     for item, expected in [
         (late, "event_coverage_not_available_at_decision_time"),
         (short, "event_coverage_does_not_cover_earnings_window"),
