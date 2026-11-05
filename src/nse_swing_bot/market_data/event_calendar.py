@@ -88,10 +88,18 @@ def _validate_source(value: str, field: str) -> None:
 def _validate_independent_sources(primary: str, secondary: str) -> None:
     primary_host = (urlparse(primary).hostname or "").lower().rstrip(".")
     secondary_host = (urlparse(secondary).hostname or "").lower().rstrip(".")
+
+    def domain_key(host: str) -> str:
+        # Conservative registrable-domain approximation for exchange sources.
+        # It intentionally treats sibling subdomains as the same source domain.
+        labels = host.split(".")
+        return ".".join(labels[-2:]) if len(labels) >= 2 else host
+
     related = (
         primary_host == secondary_host
         or primary_host.endswith("." + secondary_host)
         or secondary_host.endswith("." + primary_host)
+        or domain_key(primary_host) == domain_key(secondary_host)
     )
     if related:
         raise ValueError("primary and secondary sources must use independent domains")
