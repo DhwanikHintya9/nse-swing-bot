@@ -311,3 +311,59 @@ def load_event_coverage_csv(path: Path) -> list[EventCoverage]:
                     f"invalid event coverage CSV row {row_number}: {error}"
                 ) from error
     return coverage_rows
+
+
+def import_reviewed_event_snapshot(
+    events_path: Path,
+    coverage_path: Path,
+    universe_path: Path,
+    output_root: Path,
+    captured_at: datetime,
+    require_complete: bool = False,
+) -> Path:
+    """Validate reviewed event/coverage CSVs against a universe and persist a snapshot."""
+    import csv
+
+    if captured_at.tzinfo is None or captured_at.utcoffset() is None:
+        raise ValueError("captured_at must be timezone-aware")
+    events = load_event_csv(events_path)
+    coverage = load_event_coverage_csv(coverage_path)
+
+    with universe_path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        if reader.fieldnames is None or "symbol" not in reader.fieldnames:
+            raise ValueError("universe CSV must contain a symbol column")
+        universe_symbols = [
+            (row.get("symbol") or "").strip().upper()
+            for row in reader
+        ]
+    if not universe_symbols or any(not symbol for symbol in universe_symbols):
+        raise ValueError("universe CSV contains no symbols or blank symbols")
+    if len(universe_symbols) != len(set(universe_symbols)):
+        raise ValueError("universe CSV contains duplicate symbols")
+
+    universe_set = set(universe_symbols)
+    coverage_set = {item.symbol for item in coverage}
+    missing_coverage = sorted(universe_set - coverage_set)
+    unexpected_coverage = sorted(coverage_set - universe_set)
+    if missing_coverage:
+        raise ValueError(
+            "coverage manifest missing universe symbols: " + ", ".join(missing_coverage)
+        )
+    if unexpected_coverage:
+        raise ValueError(
+            "coverage manifest contains symbols outside universe: "
+            + ", ".join(unexpected_coverage)
+        )
+
+    unexpected_events = sorted({item.symbol for item in events} - universe_set)
+    if unexpected_events:
+        raise ValueError(
+            "event CSV contains symbols outside universe: " + ", ".join(unexpected_events)
+        )
+    incomplete = sorted(item.symbol for item in coverage if not item.complete)
+    if require_complete and incomplete:
+        raise ValueError(
+            "coverage manifest contains incomplete symbols: " + ", ".join(incomplete)
+        )
+    return write_event_snapshot(output_root, events, coverage, captured_at)
