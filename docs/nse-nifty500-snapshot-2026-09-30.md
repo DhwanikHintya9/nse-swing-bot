@@ -43,12 +43,14 @@ The source file's 501 rows are retained exactly. The index is named Nifty 500, b
 
 ## Security-series policy
 
-The source's series values are retained without interpretation:
-- `EQ`: ordinary equity series
-- `BE`: trade-to-trade series
-- `RR`: REIT units in the supplied NSE file
+The source's series values are retained as published. NSE's [Legend of Series](https://www.nseindia.com/static/market-data/legend-of-series) defines:
+- `EQ`: fully paid equity shares / ETFs in rolling settlement
+- `BE` / `BZ`: fully paid equity shares / ETFs in trade-for-trade settlement; the exchange states that netting off is not allowed in this segment
+- `RR`: units of REITs
 
-This archive records index membership, not strategy eligibility. A later strategy-universe stage must separately decide whether each series is tradable under the strategy and broker instrument constraints.
+In this capture, HFCL and STLTECH are `BE`; BAGMANE, BIRET, and EMBASSY are `RR`. The source data preserves these distinctions.
+
+This archive records index membership, not strategy eligibility. The data layer now exposes `select_constituents_by_series(frame, allowed_series)`, which requires an explicit allowlist and never changes the archived source universe. A conservative initial swing-strategy baseline would be `EQ` only, with `BE` and `RR` excluded until their settlement/liquidity and event treatment are separately approved. That is a recommended strategy policy, not an automatic ingestion rule.
 
 ## Reproducibility
 
