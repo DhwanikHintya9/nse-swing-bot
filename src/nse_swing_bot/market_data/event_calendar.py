@@ -266,7 +266,7 @@ def load_event_csv(path: Path) -> list[ScheduledEvent]:
                         ),
                     )
                 )
-            except (ValueError, TypeError) as error:
+            except (ValueError, TypeError, AttributeError) as error:
                 raise ValueError(f"invalid event CSV row {row_number}: {error}") from error
     return events
 
@@ -306,7 +306,7 @@ def load_event_coverage_csv(path: Path) -> list[EventCoverage]:
                     raise ValueError(f"duplicate coverage symbol: {item.symbol}")
                 seen_symbols.add(item.symbol)
                 coverage_rows.append(item)
-            except (ValueError, TypeError) as error:
+            except (ValueError, TypeError, AttributeError) as error:
                 raise ValueError(
                     f"invalid event coverage CSV row {row_number}: {error}"
                 ) from error
