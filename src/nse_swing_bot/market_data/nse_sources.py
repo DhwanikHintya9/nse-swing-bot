@@ -37,7 +37,7 @@ def download_nifty500_constituents(
     payload = fetch(NIFTY_500_CSV_URL)
     if not payload:
         raise ValueError("NSE Nifty 500 download returned an empty response")
-    frame = pd.read_csv(BytesIO(payload))
+    frame = pd.read_csv(BytesIO(payload), skip_blank_lines=False)
     return normalize_nifty500_constituents(
         frame,
         effective_date=effective_date,
