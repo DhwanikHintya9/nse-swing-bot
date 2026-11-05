@@ -291,3 +291,98 @@ def test_event_coverage_csv_loader_wraps_missing_field_as_row_validation_error(t
     )
     with pytest.raises(ValueError, match="invalid event coverage CSV row"):
         load_event_coverage_csv(path)
+
+
+def test_reviewed_event_import_validates_universe_and_writes_snapshot(tmp_path):
+    from nse_swing_bot.market_data.event_calendar import import_reviewed_event_snapshot
+
+    events_path = tmp_path / "events.csv"
+    events_path.write_text(
+        "event_id,symbol,event_type,event_date,announced_at,title,source_primary,"
+        "source_secondary,verification_status\n"
+        f"e1,ABC,earnings,2026-11-08,2026-11-03T12:00:00+00:00,Results,{PRIMARY},"
+        f"{SECONDARY},verified\n",
+        encoding="utf-8",
+    )
+    coverage_path = tmp_path / "coverage.csv"
+    coverage_path.write_text(
+        "symbol,covered_from,covered_through,captured_at,source_primary,"
+        "source_secondary,complete\n"
+        f"ABC,2026-11-01,2026-11-30,2026-11-04T09:00:00+00:00,{PRIMARY},"
+        f"{SECONDARY},true\n",
+        encoding="utf-8",
+    )
+    universe_path = tmp_path / "universe.csv"
+    universe_path.write_text("symbol\nABC\n", encoding="utf-8")
+
+    snapshot = import_reviewed_event_snapshot(
+        events_path,
+        coverage_path,
+        universe_path,
+        tmp_path / "snapshots",
+        datetime(2026, 11, 4, 10, 1, tzinfo=UTC),
+        require_complete=True,
+    )
+    payload = json.loads(snapshot.read_text(encoding="utf-8"))
+    assert len(payload["events"]) == 1
+    assert len(payload["coverage"]) == 1
+    assert payload["coverage"][0]["complete"] is True
+
+
+def test_reviewed_event_import_rejects_missing_universe_coverage(tmp_path):
+    from nse_swing_bot.market_data.event_calendar import import_reviewed_event_snapshot
+
+    events_path = tmp_path / "events.csv"
+    events_path.write_text(
+        "event_id,symbol,event_type,event_date,announced_at,title,source_primary,"
+        "source_secondary,verification_status\n",
+        encoding="utf-8",
+    )
+    coverage_path = tmp_path / "coverage.csv"
+    coverage_path.write_text(
+        "symbol,covered_from,covered_through,captured_at,source_primary,"
+        "source_secondary,complete\n",
+        encoding="utf-8",
+    )
+    universe_path = tmp_path / "universe.csv"
+    universe_path.write_text("symbol\nABC\nXYZ\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="missing universe symbols: ABC, XYZ"):
+        import_reviewed_event_snapshot(
+            events_path,
+            coverage_path,
+            universe_path,
+            tmp_path / "snapshots",
+            datetime(2026, 11, 4, 10, 1, tzinfo=UTC),
+        )
+
+
+def test_reviewed_event_import_can_require_all_coverage_complete(tmp_path):
+    from nse_swing_bot.market_data.event_calendar import import_reviewed_event_snapshot
+
+    events_path = tmp_path / "events.csv"
+    events_path.write_text(
+        "event_id,symbol,event_type,event_date,announced_at,title,source_primary,"
+        "source_secondary,verification_status\n",
+        encoding="utf-8",
+    )
+    coverage_path = tmp_path / "coverage.csv"
+    coverage_path.write_text(
+        "symbol,covered_from,covered_through,captured_at,source_primary,"
+        "source_secondary,complete\n"
+        f"ABC,2026-11-01,2026-11-30,2026-11-04T09:00:00+00:00,{PRIMARY},"
+        f"{SECONDARY},false\n",
+        encoding="utf-8",
+    )
+    universe_path = tmp_path / "universe.csv"
+    universe_path.write_text("symbol\nABC\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="incomplete symbols: ABC"):
+        import_reviewed_event_snapshot(
+            events_path,
+            coverage_path,
+            universe_path,
+            tmp_path / "snapshots",
+            datetime(2026, 11, 4, 10, 1, tzinfo=UTC),
+            require_complete=True,
+        )
