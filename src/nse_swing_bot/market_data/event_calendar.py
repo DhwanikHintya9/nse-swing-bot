@@ -89,11 +89,26 @@ def _validate_independent_sources(primary: str, secondary: str) -> None:
     primary_host = (urlparse(primary).hostname or "").lower().rstrip(".")
     secondary_host = (urlparse(secondary).hostname or "").lower().rstrip(".")
 
+    # Common multi-label public suffixes must be handled before falling back
+    # to the final two labels. Without this, unrelated Indian domains such as
+    # issuer.co.in and vendor.co.in would both collapse to the key "co.in".
+    multi_label_suffixes = {
+        "ac.in", "co.in", "edu.in", "firm.in", "gen.in", "gov.in",
+        "ind.in", "net.in", "nic.in", "org.in", "res.in",
+        "ac.uk", "co.uk", "gov.uk", "net.uk", "org.uk",
+        "com.au", "edu.au", "gov.au", "net.au", "org.au",
+        "co.jp", "ne.jp", "or.jp", "com.br", "com.cn", "com.hk",
+        "com.mx", "com.sg", "com.tr", "com.tw", "co.nz", "co.za",
+    }
+
     def domain_key(host: str) -> str:
-        # Conservative registrable-domain approximation for exchange sources.
-        # It intentionally treats sibling subdomains as the same source domain.
         labels = host.split(".")
-        return ".".join(labels[-2:]) if len(labels) >= 2 else host
+        if len(labels) < 2:
+            return host
+        suffix = ".".join(labels[-2:])
+        if suffix in multi_label_suffixes:
+            return ".".join(labels[-3:]) if len(labels) >= 3 else host
+        return suffix
 
     related = (
         primary_host == secondary_host
