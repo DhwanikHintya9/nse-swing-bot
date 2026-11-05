@@ -9,6 +9,8 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta
 from enum import StrEnum
+import os
+import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -84,7 +86,14 @@ def _validate_source(value: str, field: str) -> None:
 
 
 def _validate_independent_sources(primary: str, secondary: str) -> None:
-    if urlparse(primary).netloc.lower() == urlparse(secondary).netloc.lower():
+    primary_host = (urlparse(primary).hostname or "").lower().rstrip(".")
+    secondary_host = (urlparse(secondary).hostname or "").lower().rstrip(".")
+    related = (
+        primary_host == secondary_host
+        or primary_host.endswith("." + secondary_host)
+        or secondary_host.endswith("." + primary_host)
+    )
+    if related:
         raise ValueError("primary and secondary sources must use independent domains")
 
 
@@ -113,7 +122,8 @@ def evaluate_event_entry(
         raise ValueError("event block windows cannot be negative")
 
     reasons: list[str] = []
-    required_through = entry_date + timedelta(days=earnings_block_days)
+    decision_date = decision_at.date()
+    required_through = max(entry_date, decision_date) + timedelta(days=earnings_block_days)
     if coverage is None:
         reasons.append("missing_event_coverage")
     else:
@@ -123,7 +133,7 @@ def evaluate_event_entry(
             reasons.append("event_coverage_incomplete")
         if coverage.captured_at > decision_at:
             reasons.append("event_coverage_not_available_at_decision_time")
-        if coverage.covered_from > decision_at.date():
+        if coverage.covered_from > decision_date:
             reasons.append("event_coverage_starts_after_decision_date")
         if coverage.covered_through < required_through:
             reasons.append("event_coverage_does_not_cover_earnings_window")
@@ -140,7 +150,11 @@ def evaluate_event_entry(
             if event.event_type == EventType.EARNINGS
             else material_action_block_days
         )
-        if not entry_date <= event.event_date <= entry_date + timedelta(days=window):
+        # Include the decision-to-entry gap: an event between signal creation
+        # and the planned entry is still relevant to the trade decision.
+        window_start = decision_date
+        window_end = max(entry_date, decision_date) + timedelta(days=window)
+        if not window_start <= event.event_date <= window_end:
             continue
         if event.verification_status != VerificationStatus.VERIFIED:
             reasons.append(f"event_requires_manual_review:{event.event_id}")
