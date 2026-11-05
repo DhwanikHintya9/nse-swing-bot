@@ -11,7 +11,7 @@ This document separates automated/code-level validation from live operational ac
 | Kite request control | Unit tests cover pacing, retry/backoff, Retry-After, shared 429 cooldown, and malformed data handling. The current Kite documentation confirms 1 quote request/sec, 3 historical candle requests/sec, and 10 requests/sec for other endpoints. | No live Kite request has been made. Zerodha does not provide a sandbox. Run read-only smoke tests only after a valid Kite Connect subscription and local credentials are configured. Do not put credentials in the repository or chat. |
 | Historical candle ingestion | Unit tests cover chunking, validated checkpoints, resume after interruption, cache revalidation, and quarantine. | Verify one or more read-only historical requests against the intended Kite account and compare the stored candles with the returned source payload. |
 | Corporate events / earnings | Normalized CSV ingestion, independent-source checks, point-in-time visibility, coverage fail-closed behavior, and entry gates are covered by tests. | No complete operator-reviewed event archive has been reconciled across the full 501-symbol universe and required date range. Do not mark event coverage complete or enable entry decisions based on an empty event file. |
-| CI | CI run #223 passed on code head `8a32daf`: 78 tests and Ruff. | CI must pass on the current head after every subsequent code change. |
+| CI | CI run #241 passed on code head `bfb4723`: 79 tests and Ruff across `src`, `tests`, and `scripts`. | CI must pass on the current head after every subsequent code change. |
 
 ## Safe live-test sequence
 
