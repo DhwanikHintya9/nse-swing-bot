@@ -12,7 +12,11 @@ from nse_swing_bot.market_data.trading_calendar import NSETradingCalendar
 
 
 def test_nifty500_downloader_uses_official_source_and_records_effective_date() -> None:
-    csv = b"Company Name,Symbol\nAlpha,AAA\nBeta,BBB\n"
+    csv = (
+        b"Company Name,Industry,Symbol,Series,ISIN Code\n"
+        b"Alpha,Technology,AAA,EQ,INE000A01001\n"
+        b"Beta,Banking,BBB,BE,INE000B01001\n"
+    )
     requested: list[str] = []
 
     def fake_download(url: str) -> bytes:
@@ -26,6 +30,9 @@ def test_nifty500_downloader_uses_official_source_and_records_effective_date() -
     assert result["symbol"].tolist() == ["AAA", "BBB"]
     assert result["effective_date"].unique().tolist() == ["2026-11-04"]
     assert result["source"].unique().tolist() == [NIFTY_500_CSV_URL]
+    assert result.loc[result["symbol"] == "BBB", "series"].item() == "BE"
+    assert result.loc[result["symbol"] == "AAA", "isin_code"].item() == "INE000A01001"
+    assert result.loc[result["symbol"] == "AAA", "company_name"].item() == "Alpha"
 
 
 def test_nifty500_downloader_fails_closed_on_empty_or_wrong_size() -> None:
@@ -36,13 +43,20 @@ def test_nifty500_downloader_fails_closed_on_empty_or_wrong_size() -> None:
     with pytest.raises(ValueError, match="expected 2"):
         download_nifty500_constituents(
             date(2026, 11, 4),
-            downloader=lambda _: b"Symbol\nAAA\n",
+            downloader=lambda _: (
+                b"Company Name,Industry,Symbol,Series,ISIN Code\n"
+                b"Alpha,Technology,AAA,EQ,INE000A01001\n"
+            ),
             expected_count=2,
         )
 
 
 def test_acquired_nifty500_snapshot_is_immutable(tmp_path) -> None:
-    payload = b"Symbol\nAAA\nBBB\n"
+    payload = (
+        b"Company Name,Industry,Symbol,Series,ISIN Code\n"
+        b"Alpha,Technology,AAA,EQ,INE000A01001\n"
+        b"Beta,Banking,BBB,RR,INE000B01001\n"
+    )
     path = acquire_and_save_nifty500_snapshot(
         tmp_path,
         date(2026, 11, 4),
@@ -51,6 +65,7 @@ def test_acquired_nifty500_snapshot_is_immutable(tmp_path) -> None:
     )
     saved = pd.read_csv(path)
     assert saved["symbol"].tolist() == ["AAA", "BBB"]
+    assert saved["series"].tolist() == ["EQ", "RR"]
     assert saved["source"].str.startswith("https://nsearchives.nseindia.com/").all()
     with pytest.raises(FileExistsError, match="overwrite"):
         acquire_and_save_nifty500_snapshot(
@@ -113,12 +128,21 @@ def test_calendar_fails_closed_outside_declared_coverage(tmp_path) -> None:
         calendar.sessions(date(2025, 12, 31), date(2026, 1, 2))
 
 
-
 @pytest.mark.parametrize(
     "csv, message",
     [
-        (b"Symbol\nAAA\nAAA\n", "duplicate symbols"),
-        (b"Symbol\nAAA\n \n", "blank or missing symbols"),
+        (
+            b"Company Name,Industry,Symbol,Series,ISIN Code\n"
+            b"Alpha,Tech,AAA,EQ,INE000A01001\n"
+            b"Beta,Tech,AAA,EQ,INE000B01001\n",
+            "duplicate symbols",
+        ),
+        (
+            b"Company Name,Industry,Symbol,Series,ISIN Code\n"
+            b"Alpha,Tech,AAA,EQ,INE000A01001\n"
+            b"Beta,Tech, ,EQ,INE000B01001\n",
+            "blank or missing symbols",
+        ),
     ],
 )
 def test_nifty500_downloader_rejects_duplicate_and_blank_symbols(csv, message) -> None:
