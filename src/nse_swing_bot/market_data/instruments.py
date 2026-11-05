@@ -59,8 +59,10 @@ def normalize_instrument_master(rows: list[dict[str, object]]) -> pd.DataFrame:
         raise ValueError("instrument tokens, tick sizes, and lot sizes must be positive")
     if frame["instrument_token"].duplicated().any():
         raise ValueError("NSE equity instrument tokens must be unique")
-    if frame["tradingsymbol"].isna().any() or frame["tradingsymbol"].duplicated().any():
+    symbols = frame["tradingsymbol"].astype("string").str.strip().str.upper()
+    if symbols.isna().any() or symbols.eq("").any() or symbols.duplicated().any():
         raise ValueError("NSE equity trading symbols must be present and unique")
+    frame["tradingsymbol"] = symbols
 
     return frame.sort_values("tradingsymbol").reset_index(drop=True)
 
