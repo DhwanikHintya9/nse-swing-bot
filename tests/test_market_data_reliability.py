@@ -1,4 +1,5 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
+from email.utils import format_datetime
 
 import pandas as pd
 import pytest
@@ -315,3 +316,43 @@ def test_cached_invalid_chunk_is_deleted_and_refetched(tmp_path) -> None:
     result = adapter.fetch_daily_candles(123, start, start, chunk_days=1)
     assert client.calls == 1
     assert result.iloc[0]["high"] == 12.0
+
+
+
+def test_pacer_applies_shared_rate_limit_cooldown() -> None:
+    now = [100.0]
+    sleeps: list[float] = []
+
+    def sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        now[0] += seconds
+
+    pacer = KiteRequestPacer(sleep=sleep, monotonic=lambda: now[0])
+    pacer.cooldown("historical", 7.0)
+    pacer.wait("historical")
+    assert sleeps == [7.0]
+
+
+def test_retry_after_accepts_http_date() -> None:
+    sleeps: list[float] = []
+    retry_at = datetime.now(UTC) + timedelta(seconds=8)
+
+    class RateLimitError(Exception):
+        status_code = 429
+        response = type(
+            "Response",
+            (),
+            {"headers": {"Retry-After": format_datetime(retry_at, usegmt=True)}},
+        )()
+
+    calls = [0]
+
+    def operation() -> str:
+        calls[0] += 1
+        if calls[0] == 1:
+            raise RateLimitError("slow down")
+        return "ok"
+
+    assert no_wait_executor(sleeps).call("historical", operation) == "ok"
+    assert calls[0] == 2
+    assert 0 <= sleeps[0] <= 8
