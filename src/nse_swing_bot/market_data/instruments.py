@@ -87,7 +87,7 @@ def normalize_nifty500_constituents(
     frame: pd.DataFrame,
     effective_date: date,
     source_name: str,
-    expected_count: int | None = 500,
+    expected_count: int | None = 501,
 ) -> pd.DataFrame:
     """Validate constituent rows and attach point-in-time source provenance."""
     if not source_name.strip():
@@ -139,7 +139,7 @@ def load_nifty500_constituents(
     csv_path: Path,
     effective_date: date,
     source_name: str,
-    expected_count: int | None = 500,
+    expected_count: int | None = 501,
 ) -> pd.DataFrame:
     """Load an explicitly sourced constituent CSV; no guessed or hardcoded universe."""
     return normalize_nifty500_constituents(
