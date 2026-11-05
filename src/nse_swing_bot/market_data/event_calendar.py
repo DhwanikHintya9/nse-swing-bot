@@ -269,3 +269,45 @@ def load_event_csv(path: Path) -> list[ScheduledEvent]:
             except (ValueError, TypeError) as error:
                 raise ValueError(f"invalid event CSV row {row_number}: {error}") from error
     return events
+
+
+def load_event_coverage_csv(path: Path) -> list[EventCoverage]:
+    """Load per-symbol coverage manifests from an operator-reviewed CSV."""
+    import csv
+
+    required = {
+        "symbol", "covered_from", "covered_through", "captured_at",
+        "source_primary", "source_secondary", "complete",
+    }
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
+            missing = required.difference(reader.fieldnames or [])
+            raise ValueError(
+                f"event coverage CSV missing columns: {', '.join(sorted(missing))}"
+            )
+        coverage_rows: list[EventCoverage] = []
+        seen_symbols: set[str] = set()
+        for row_number, row in enumerate(reader, start=2):
+            try:
+                complete_text = row["complete"].strip().lower()
+                if complete_text not in {"true", "false"}:
+                    raise ValueError("complete must be true or false")
+                item = EventCoverage(
+                    symbol=row["symbol"].strip().upper(),
+                    covered_from=date.fromisoformat(row["covered_from"].strip()),
+                    covered_through=date.fromisoformat(row["covered_through"].strip()),
+                    captured_at=datetime.fromisoformat(row["captured_at"].strip()),
+                    source_primary=row["source_primary"].strip(),
+                    source_secondary=row["source_secondary"].strip(),
+                    complete=complete_text == "true",
+                )
+                if item.symbol in seen_symbols:
+                    raise ValueError(f"duplicate coverage symbol: {item.symbol}")
+                seen_symbols.add(item.symbol)
+                coverage_rows.append(item)
+            except (ValueError, TypeError) as error:
+                raise ValueError(
+                    f"invalid event coverage CSV row {row_number}: {error}"
+                ) from error
+    return coverage_rows
