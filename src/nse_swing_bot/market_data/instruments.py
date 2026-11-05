@@ -107,13 +107,32 @@ def normalize_nifty500_constituents(
         raise ValueError(
             f"expected {expected_count} unique constituents, received {len(symbols)}"
         )
-    return pd.DataFrame(
-        {
-            "symbol": symbols.sort_values().to_list(),
-            "effective_date": effective_date.isoformat(),
-            "source": source_name.strip(),
-        }
-    )
+
+    # Retain the source's descriptive and security-identity fields. Index
+    # membership must not erase the series/ISIN needed for later eligibility
+    # and instrument-master reconciliation.
+    metadata_columns = {
+        "company name": "company_name",
+        "industry": "industry",
+        "series": "series",
+        "isin code": "isin_code",
+    }
+    result = pd.DataFrame({"symbol": symbols})
+    source_columns = {str(column).strip().lower(): column for column in frame.columns}
+    for source_name_column, output_column in metadata_columns.items():
+        source_column = source_columns.get(source_name_column)
+        if source_column is None:
+            continue
+        values = frame[source_column].astype("string").str.strip()
+        if values.isna().any() or values.eq("").any():
+            raise ValueError(f"constituent CSV contains blank or missing {output_column}")
+        result[output_column] = values
+        if output_column == "isin_code" and values.duplicated().any():
+            raise ValueError("constituent CSV contains duplicate ISIN codes")
+
+    result["effective_date"] = effective_date.isoformat()
+    result["source"] = source_name.strip()
+    return result.sort_values("symbol").reset_index(drop=True)
 
 
 def load_nifty500_constituents(
