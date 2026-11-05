@@ -213,3 +213,53 @@ def test_event_between_decision_and_entry_blocks_new_trade():
 def test_primary_and_secondary_subdomains_are_not_independent():
     with pytest.raises(ValueError, match="independent domains"):
         event(source_secondary="https://filings.nseindia.com/another-page")
+
+
+def test_event_coverage_csv_loader_parses_reviewed_manifest(tmp_path):
+    from nse_swing_bot.market_data.event_calendar import load_event_coverage_csv
+
+    path = tmp_path / "coverage.csv"
+    path.write_text(
+        "symbol,covered_from,covered_through,captured_at,source_primary,"
+        "source_secondary,complete\n"
+        f"abc,2026-11-01,2026-11-30,2026-11-04T09:00:00+00:00,{PRIMARY},"
+        f"{SECONDARY},true\n",
+        encoding="utf-8",
+    )
+    loaded = load_event_coverage_csv(path)
+    assert len(loaded) == 1
+    assert loaded[0].symbol == "ABC"
+    assert loaded[0].covered_from == date(2026, 11, 1)
+    assert loaded[0].complete is True
+
+
+def test_event_coverage_csv_loader_rejects_ambiguous_complete_flag(tmp_path):
+    from nse_swing_bot.market_data.event_calendar import load_event_coverage_csv
+
+    path = tmp_path / "coverage.csv"
+    path.write_text(
+        "symbol,covered_from,covered_through,captured_at,source_primary,"
+        "source_secondary,complete\n"
+        f"ABC,2026-11-01,2026-11-30,2026-11-04T09:00:00+00:00,{PRIMARY},"
+        f"{SECONDARY},yes\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="complete must be true or false"):
+        load_event_coverage_csv(path)
+
+
+def test_event_coverage_csv_loader_rejects_duplicate_symbols(tmp_path):
+    from nse_swing_bot.market_data.event_calendar import load_event_coverage_csv
+
+    path = tmp_path / "coverage.csv"
+    row = (
+        f"ABC,2026-11-01,2026-11-30,2026-11-04T09:00:00+00:00,"
+        f"{PRIMARY},{SECONDARY},true\n"
+    )
+    path.write_text(
+        "symbol,covered_from,covered_through,captured_at,source_primary,"
+        "source_secondary,complete\n" + row + row,
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="duplicate coverage symbol"):
+        load_event_coverage_csv(path)
