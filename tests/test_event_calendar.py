@@ -1,6 +1,5 @@
-from datetime import UTC, date, datetime, timedelta
-
 import json
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
