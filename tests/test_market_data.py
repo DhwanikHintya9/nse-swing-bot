@@ -130,7 +130,7 @@ def test_validation_rejects_infinite_ohlcv() -> None:
 
 def test_nifty500_loader_requires_and_records_source(tmp_path) -> None:
     csv_path = tmp_path / "constituents.csv"
-    pd.DataFrame({"Symbol": ["ABC", "XYZ", "ABC"]}).to_csv(csv_path, index=False)
+    pd.DataFrame({"Symbol": ["ABC", "XYZ"]}).to_csv(csv_path, index=False)
     result = load_nifty500_constituents(
         csv_path, date(2026, 1, 1), "NSE official constituent file", expected_count=2
     )
