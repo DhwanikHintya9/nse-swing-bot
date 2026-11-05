@@ -313,7 +313,7 @@ def test_reviewed_event_import_validates_universe_and_writes_snapshot(tmp_path):
         encoding="utf-8",
     )
     universe_path = tmp_path / "universe.csv"
-    universe_path.write_text("symbol\nABC\n", encoding="utf-8")
+    universe_path.write_text("Symbol\nABC\n", encoding="utf-8")
 
     snapshot = import_reviewed_event_snapshot(
         events_path,
