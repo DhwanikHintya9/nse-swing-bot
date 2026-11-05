@@ -331,10 +331,18 @@ def import_reviewed_event_snapshot(
 
     with universe_path.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
-        if reader.fieldnames is None or "symbol" not in reader.fieldnames:
+        symbol_column = next(
+            (
+                column
+                for column in (reader.fieldnames or [])
+                if column.strip().lower() == "symbol"
+            ),
+            None,
+        )
+        if symbol_column is None:
             raise ValueError("universe CSV must contain a symbol column")
         universe_symbols = [
-            (row.get("symbol") or "").strip().upper()
+            (row.get(symbol_column) or "").strip().upper()
             for row in reader
         ]
     if not universe_symbols or any(not symbol for symbol in universe_symbols):
