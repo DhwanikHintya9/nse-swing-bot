@@ -320,3 +320,20 @@ def test_nse_downloader_rejects_html_instead_of_parsing_error_page(monkeypatch) 
     with pytest.raises(ValueError, match="unexpected content type"):
         nse_sources._download_bytes(NIFTY_500_CSV_URL)
     assert len(calls) == 1
+
+
+def test_nse_downloader_does_not_retry_permanent_http_errors(monkeypatch) -> None:
+    from urllib.error import HTTPError
+
+    from nse_swing_bot.market_data import nse_sources
+
+    calls = []
+
+    def fake_urlopen(request, timeout):
+        calls.append(request)
+        raise HTTPError(NIFTY_500_CSV_URL, 403, "Forbidden", {}, None)
+
+    monkeypatch.setattr(nse_sources, "urlopen", fake_urlopen)
+    with pytest.raises(HTTPError, match="Forbidden"):
+        nse_sources._download_bytes(NIFTY_500_CSV_URL)
+    assert len(calls) == 1
