@@ -200,7 +200,11 @@ def test_event_between_decision_and_entry_blocks_new_trade():
     planned_entry = date(2026, 11, 6)
     event_before_entry = event(event_date=date(2026, 11, 5))
     result = evaluate_event_entry(
-        "ABC", DECISION, planned_entry, [event_before_entry], coverage()
+        "ABC",
+        DECISION,
+        planned_entry,
+        [event_before_entry],
+        coverage(covered_through=date(2026, 11, 11)),
     )
     assert not result.allowed
     assert result.reasons == ("earnings_within_5_calendar_days:ABC-EVENT-1",)
