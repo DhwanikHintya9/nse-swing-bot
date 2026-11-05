@@ -150,3 +150,31 @@ def test_nifty500_downloader_rejects_duplicate_and_blank_symbols(csv, message) -
         download_nifty500_constituents(
             date(2026, 11, 4), downloader=lambda _: csv, expected_count=2
         )
+
+
+def test_archived_2026_nse_calendar_includes_official_holidays_and_muhurat_session() -> None:
+    from pathlib import Path
+
+    calendar_path = (
+        Path(__file__).resolve().parents[1]
+        / "data"
+        / "market_calendar"
+        / "nse-equity-holidays-2026.csv"
+    )
+    calendar = NSETradingCalendar.from_csv(
+        calendar_path,
+        source="NSE India Market Timings & Holidays, verified 2026-11-05",
+        coverage_start=date(2026, 1, 1),
+        coverage_end=date(2026, 12, 31),
+        special_sessions={
+            date(2026, 11, 8): "NSE Circular NSE/CMTR/76941 dated 2026-10-19"
+        },
+    )
+
+    assert len(calendar.holidays) == 16
+    sessions = calendar.sessions(date(2026, 11, 7), date(2026, 11, 11))
+    assert sessions.strftime("%Y-%m-%d").tolist() == [
+        "2026-11-08",
+        "2026-11-09",
+        "2026-11-11",
+    ]
