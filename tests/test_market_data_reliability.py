@@ -13,6 +13,7 @@ from nse_swing_bot.market_data.request_control import (
     RetryPolicy,
 )
 from nse_swing_bot.market_data.service import MarketDataService
+from nse_swing_bot.market_data.validation import CandleDataError
 
 
 def no_wait_executor(sleeps: list[float] | None = None) -> KiteRequestExecutor:
@@ -195,7 +196,9 @@ def test_adapter_resumes_after_later_chunk_failure(tmp_path) -> None:
 
 def test_market_data_service_quarantines_invalid_candles(tmp_path) -> None:
     class InvalidAdapter:
-        def fetch_daily_candles(self, instrument_token, start, end, chunk_days=365):
+        def fetch_daily_candles(
+            self, instrument_token, start, end, chunk_days=365, expected_sessions=None
+        ):
             return pd.DataFrame(
                 {
                     "open": [10.0],
@@ -224,3 +227,91 @@ def test_market_data_service_quarantines_invalid_candles(tmp_path) -> None:
     assert len(quarantined) == 1
     assert "high is inconsistent" in quarantined[0].read_text(encoding="utf-8")
     assert not (tmp_path / "parquet" / "raw").exists()
+
+
+
+def test_invalid_chunk_is_not_checkpointed_and_raw_rows_are_preserved(tmp_path) -> None:
+    class FakeKiteClient:
+        def historical_data(self, instrument_token, from_date, to_date, interval,
+                            continuous=False, oi=False):
+            return [{
+                "date": from_date,
+                "open": 10.0,
+                "high": 8.0,
+                "low": 9.0,
+                "close": 10.0,
+                "volume": 1.0,
+            }]
+
+    checkpoints = JsonChunkCheckpointStore(tmp_path / "checkpoints")
+    adapter = KiteMarketDataAdapter(
+        FakeKiteClient(), request_executor=no_wait_executor(), checkpoint_store=checkpoints
+    )
+    with pytest.raises(CandleDataError, match="high is inconsistent") as error:
+        adapter.fetch_daily_candles(
+            123, date(2026, 1, 1), date(2026, 1, 1), chunk_days=1
+        )
+    assert len(error.value.raw_candles) == 1
+    assert checkpoints.load(123, date(2026, 1, 1), date(2026, 1, 1), 1) is None
+
+
+def test_malformed_missing_date_response_is_quarantined(tmp_path) -> None:
+    class MalformedAdapter:
+        def fetch_daily_candles(
+            self, instrument_token, start, end, chunk_days=365, expected_sessions=None
+        ):
+            raise CandleDataError(
+                "Kite historical response did not include candle dates",
+                pd.DataFrame([{"open": 10.0, "high": 11.0}]),
+            )
+
+    quarantine = DataQualityQuarantine(tmp_path / "quarantine")
+    service = MarketDataService(
+        MalformedAdapter(),
+        ParquetCandleStore(tmp_path / "parquet"),
+        tmp_path / "snapshots",
+        quarantine=quarantine,
+    )
+    instrument = pd.Series(
+        {"exchange": "NSE", "tradingsymbol": "ABC", "instrument_token": 123}
+    )
+    with pytest.raises(CandleDataError, match="did not include candle dates"):
+        service.sync_daily_history(instrument, date(2026, 1, 1), date(2026, 1, 1))
+
+    quarantined = list((tmp_path / "quarantine").rglob("quarantine-*.json"))
+    assert len(quarantined) == 1
+    payload = quarantined[0].read_text(encoding="utf-8")
+    assert "did not include candle dates" in payload
+    assert '"open": 10.0' in payload
+
+
+def test_cached_invalid_chunk_is_deleted_and_refetched(tmp_path) -> None:
+    class FakeKiteClient:
+        def __init__(self):
+            self.calls = 0
+
+        def historical_data(self, instrument_token, from_date, to_date, interval,
+                            continuous=False, oi=False):
+            self.calls += 1
+            return [{
+                "date": from_date,
+                "open": 10.0,
+                "high": 12.0,
+                "low": 9.0,
+                "close": 11.0,
+                "volume": 100.0,
+            }]
+
+    start = date(2026, 1, 1)
+    checkpoints = JsonChunkCheckpointStore(tmp_path / "checkpoints")
+    checkpoints.save(123, start, start, 1, [{
+        "date": "2026-01-01", "open": 10.0, "high": 8.0,
+        "low": 9.0, "close": 10.0, "volume": 1.0,
+    }])
+    client = FakeKiteClient()
+    adapter = KiteMarketDataAdapter(
+        client, request_executor=no_wait_executor(), checkpoint_store=checkpoints
+    )
+    result = adapter.fetch_daily_candles(123, start, start, chunk_days=1)
+    assert client.calls == 1
+    assert result.iloc[0]["high"] == 12.0
