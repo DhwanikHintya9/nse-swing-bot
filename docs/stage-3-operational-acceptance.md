@@ -16,6 +16,12 @@ This document separates automated/code-level validation from live operational ac
 ## Safe live-test sequence
 
 1. From the intended deployment network, run the NSE downloader with effective date `2026-09-30`. Compare the five source columns, 501-row observed baseline, and symbol/ISIN uniqueness with the archived source capture. Do not replace the archived snapshot if the source count or schema changes unexpectedly.
+
+   ```powershell
+   python scripts/refresh_nifty500.py --effective-date 2026-09-30 --output-dir data
+   ```
+
+   The command uses the official NSE endpoint, browser-compatible headers, a 60-second timeout, and bounded transient retries. It writes an immutable normalized snapshot under `data/universe/`; an existing dated snapshot is never overwritten.
 2. Configure Kite credentials locally through environment variables or a secret manager. Never commit or paste API secrets or access tokens.
 3. Use read-only Kite endpoints only for the smoke test: profile/session validation, instrument master retrieval, and a small historical candle range. Do not place, modify, or cancel orders.
 4. Archive official event records and independent company/secondary references. Normalize and review them before setting any per-symbol coverage manifest to complete.
