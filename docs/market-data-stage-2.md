@@ -42,6 +42,8 @@
 ## Stage 3B — request reliability and data quarantine
 
 - Added one shared, process-local Kite request pacer: historical candle calls are spaced at no more than 3 requests/second, quote calls at 1/second, and other endpoints at 10/second, matching the currently published Kite API limits.
+- Rechecked the published Kite Connect rate-limit table on 2026-11-05: Quote 1 request/second, historical candles 3 requests/second, and other endpoints 10 requests/second. Reference: https://kite.trade/docs/connect/v3/exceptions/.
+- Zerodha's published forum guidance describes a 10-second cooldown after HTTP 429 during its bad-request throttling. The retry layer honors Retry-After when supplied and uses a conservative 10-second fallback. Reference: https://kite.trade/forum/discussion/comment/41026/.
 - Added bounded retries for HTTP 429, HTTP 5xx, and recognized transient network exceptions. HTTP 400/403 and other non-transient client errors fail immediately. A 429 honors Retry-After when supplied; otherwise the conservative cooldown is 10 seconds.
 - The 10-second fallback reflects Zerodha's published guidance for the throttling cooldown on repeated bad requests. The request pacing and retry settings should be rechecked against Kite's documentation before production rollout.
 - Historical downloads can persist completed date chunks atomically and resume after interruption without refetching completed chunks. Checkpoints are local JSON and must be stored on durable storage; they are not a substitute for the append-only Parquet raw dataset.
