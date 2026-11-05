@@ -30,7 +30,7 @@ class DataQualityQuarantine:
         if not reason.strip():
             raise ValueError("quarantine reason is required")
         captured_at = captured_at or datetime.now(UTC)
-        if captured_at.tzinfo is None:
+        if captured_at.tzinfo is None or captured_at.utcoffset() is None:
             raise ValueError("captured_at must be timezone-aware")
         stamp = captured_at.astimezone(UTC).strftime("%Y%m%dT%H%M%S%fZ")
         directory = self.root / f"symbol={safe_symbol(symbol)}"
@@ -52,7 +52,7 @@ class DataQualityQuarantine:
         fd, temporary = tempfile.mkstemp(prefix=".quarantine-", dir=directory)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                json.dump(payload, handle, default=str, allow_nan=True)
+                json.dump(payload, handle, default=str, allow_nan=False)
                 handle.flush()
                 os.fsync(handle.fileno())
             os.replace(temporary, destination)
