@@ -5,7 +5,9 @@ from __future__ import annotations
 import argparse
 import os
 from datetime import date
+from pathlib import Path
 
+from dotenv import load_dotenv
 from kiteconnect import KiteConnect
 
 from nse_swing_bot.market_data.instruments import normalize_instrument_master
@@ -13,6 +15,9 @@ from nse_swing_bot.market_data.kite_adapter import KiteMarketDataAdapter
 
 
 def main() -> int:
+    project_root = Path(__file__).resolve().parents[1]
+    load_dotenv(dotenv_path=project_root / ".env", override=True)
+
     parser = argparse.ArgumentParser(
         description="Validate Kite authentication, NSE instruments, and daily candles."
     )
@@ -31,7 +36,9 @@ def main() -> int:
     api_key = os.environ.get("KITE_API_KEY")
     access_token = os.environ.get("KITE_ACCESS_TOKEN")
     if not api_key or not access_token:
-        parser.error("set KITE_API_KEY and KITE_ACCESS_TOKEN in the local environment")
+        parser.error(
+            "run scripts/kite_read_only_login.py first to create local Kite credentials"
+        )
 
     client = KiteConnect(api_key=api_key)
     client.set_access_token(access_token)
