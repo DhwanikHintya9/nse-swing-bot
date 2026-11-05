@@ -372,3 +372,46 @@ def test_strategy_series_filter_requires_explicit_policy_and_preserves_source_un
 
     with pytest.raises(ValueError, match="did not match"):
         select_constituents_by_series(universe, {"EQQ"})
+
+
+def test_nse_downloader_honors_retry_after_on_http_429(monkeypatch) -> None:
+    from email.message import Message
+    from urllib.error import HTTPError
+
+    from nse_swing_bot.market_data import nse_sources
+
+    sleeps: list[float] = []
+    calls = []
+
+    class FakeHeaders:
+        def get_content_type(self):
+            return "text/csv"
+
+    class FakeResponse:
+        status = 200
+        headers = FakeHeaders()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def read(self):
+            return b"Company Name,Industry,Symbol,Series,ISIN Code\n"
+
+    retry_headers = Message()
+    retry_headers["Retry-After"] = "0.5"
+
+    def fake_urlopen(request, timeout):
+        calls.append(request)
+        if len(calls) == 1:
+            raise HTTPError(NIFTY_500_CSV_URL, 429, "Too Many Requests", retry_headers, None)
+        return FakeResponse()
+
+    monkeypatch.setattr(nse_sources, "urlopen", fake_urlopen)
+    monkeypatch.setattr(nse_sources.time, "sleep", sleeps.append)
+
+    assert nse_sources._download_bytes(NIFTY_500_CSV_URL).startswith(b"Company Name")
+    assert len(calls) == 2
+    assert sleeps == [0.5]
