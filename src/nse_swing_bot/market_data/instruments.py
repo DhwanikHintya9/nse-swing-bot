@@ -135,6 +135,28 @@ def normalize_nifty500_constituents(
     return result.sort_values("symbol").reset_index(drop=True)
 
 
+def select_constituents_by_series(
+    frame: pd.DataFrame,
+    allowed_series: set[str],
+) -> pd.DataFrame:
+    """Apply an explicit caller-supplied security-series eligibility policy.
+
+    The source universe is never modified. Callers must choose allowed series;
+    there is deliberately no default that silently treats EQ, BE, and RR alike.
+    """
+    if not allowed_series:
+        raise ValueError("allowed_series must contain at least one explicit series")
+    if "series" not in frame.columns:
+        raise ValueError("constituent frame must retain the source series column")
+    normalized_allowed = {value.strip().upper() for value in allowed_series}
+    if any(not value for value in normalized_allowed):
+        raise ValueError("allowed_series cannot contain blank values")
+    series = frame["series"].astype("string").str.strip().str.upper()
+    if series.isna().any() or series.eq("").any():
+        raise ValueError("constituent frame contains blank or missing series")
+    return frame.loc[series.isin(normalized_allowed)].copy().reset_index(drop=True)
+
+
 def load_nifty500_constituents(
     csv_path: Path,
     effective_date: date,
