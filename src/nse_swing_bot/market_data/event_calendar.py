@@ -195,7 +195,8 @@ def write_event_snapshot(
         ],
     }
     root.mkdir(parents=True, exist_ok=True)
-    path = root / f"events-{captured_at.astimezone().strftime('%Y%m%dT%H%M%S%f%z')}-{uuid4().hex[:8]}.json"
+    timestamp = captured_at.astimezone().strftime("%Y%m%dT%H%M%S%f%z")
+    path = root / f"events-{timestamp}-{uuid4().hex[:8]}.json"
     with path.open("x", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, sort_keys=True)
         handle.write("\n")
