@@ -112,7 +112,7 @@ def _download_bytes(url: str) -> bytes:
             with urlopen(request, timeout=NSE_DOWNLOAD_TIMEOUT_SECONDS) as response:
                 status = getattr(response, "status", 200)
                 if status != 200:
-                    raise OSError(f"NSE constituent download failed with HTTP {status}")
+                    raise ValueError(f"NSE constituent download failed with HTTP {status}")
                 content_type = response.headers.get_content_type()
                 if content_type != "text/csv":
                     raise ValueError(
@@ -123,7 +123,10 @@ def _download_bytes(url: str) -> bytes:
                     raise ValueError("NSE Nifty 500 download returned an empty response")
                 return payload
         except HTTPError as error:
-            if error.code not in TRANSIENT_HTTP_STATUSES or attempt + 1 == NSE_DOWNLOAD_MAX_ATTEMPTS:
+            if (
+                error.code not in TRANSIENT_HTTP_STATUSES
+                or attempt + 1 == NSE_DOWNLOAD_MAX_ATTEMPTS
+            ):
                 raise
             time.sleep(_retry_after_seconds(error, attempt))
         except (TimeoutError, URLError, OSError):
