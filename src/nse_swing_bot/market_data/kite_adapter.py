@@ -49,7 +49,9 @@ class KiteMarketDataAdapter:
         try:
             raw = pd.DataFrame.from_records(records)
         except (TypeError, ValueError) as error:
-            raise CandleDataError(f"malformed Kite historical response: {error}", pd.DataFrame()) from error
+            raise CandleDataError(
+                f"malformed Kite historical response: {error}", pd.DataFrame()
+            ) from error
         if "date" not in raw.columns:
             raise CandleDataError("Kite historical response did not include candle dates", raw)
         try:
