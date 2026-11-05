@@ -14,7 +14,7 @@ from nse_swing_bot.market_data.instruments import (
 from nse_swing_bot.market_data.kite_adapter import KiteMarketDataAdapter
 from nse_swing_bot.market_data.parquet_store import ParquetCandleStore
 from nse_swing_bot.market_data.quarantine import DataQualityQuarantine
-from nse_swing_bot.market_data.validation import validate_daily_candles
+from nse_swing_bot.market_data.validation import CandleDataError, validate_daily_candles
 
 
 class MarketDataService:
@@ -52,14 +52,26 @@ class MarketDataService:
         token = int(instrument["instrument_token"])
         if exchange != "NSE":
             raise ValueError("only NSE instruments are supported by this sync service")
-        candles = self.adapter.fetch_daily_candles(
-            token, start, end, chunk_days=chunk_days
-        )
+        try:
+            candles = self.adapter.fetch_daily_candles(
+                token,
+                start,
+                end,
+                chunk_days=chunk_days,
+                expected_sessions=expected_sessions,
+            )
+        except CandleDataError as error:
+            if self.quarantine is not None:
+                self.quarantine.store(
+                    f"{exchange}:{symbol}", start, end, str(error), error.raw_candles
+                )
+            raise
+
         try:
             validated = validate_daily_candles(
                 candles, expected_sessions=expected_sessions
             )
-        except ValueError as error:
+        except (ValueError, TypeError, KeyError) as error:
             if self.quarantine is not None:
                 self.quarantine.store(
                     f"{exchange}:{symbol}", start, end, str(error), candles
