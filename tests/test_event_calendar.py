@@ -386,3 +386,80 @@ def test_reviewed_event_import_can_require_all_coverage_complete(tmp_path):
             datetime(2026, 11, 4, 10, 1, tzinfo=UTC),
             require_complete=True,
         )
+
+
+def test_coverage_template_script_creates_all_symbols_as_incomplete(tmp_path):
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    universe = tmp_path / "universe.csv"
+    universe.write_text("Symbol\nXYZ\nABC\n", encoding="utf-8")
+    output = tmp_path / "coverage.csv"
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "create_event_coverage_template.py"
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--universe",
+            str(universe),
+            "--covered-from",
+            "2026-09-30",
+            "--covered-through",
+            "2026-11-30",
+            "--captured-at",
+            "2026-11-05T15:30:00+05:30",
+            "--output",
+            str(output),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    generated = pd.read_csv(output)
+    assert generated["symbol"].tolist() == ["ABC", "XYZ"]
+    assert generated["complete"].tolist() == [False, False]
+    assert generated["source_primary"].isna().all()
+    assert generated["source_secondary"].isna().all()
+
+
+def test_coverage_template_script_refuses_to_overwrite(tmp_path):
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    universe = tmp_path / "universe.csv"
+    universe.write_text("symbol\nABC\n", encoding="utf-8")
+    output = tmp_path / "coverage.csv"
+    output.write_text("existing", encoding="utf-8")
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "create_event_coverage_template.py"
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--universe",
+            str(universe),
+            "--covered-from",
+            "2026-09-30",
+            "--covered-through",
+            "2026-11-30",
+            "--captured-at",
+            "2026-11-05T15:30:00+05:30",
+            "--output",
+            str(output),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 2
+    assert output.read_text(encoding="utf-8") == "existing"
