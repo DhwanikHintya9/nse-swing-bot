@@ -96,9 +96,13 @@ def normalize_nifty500_constituents(
     if symbol_column is None:
         raise ValueError("constituent CSV must contain a Symbol column")
     symbols = frame[symbol_column].astype("string").str.strip().str.upper()
-    symbols = symbols.dropna().loc[lambda values: values.ne("")].drop_duplicates()
     if symbols.empty:
-        raise ValueError("constituent CSV contains no valid symbols")
+        raise ValueError("constituent CSV contains no symbols")
+    if symbols.isna().any() or symbols.eq("").any():
+        raise ValueError("constituent CSV contains blank or missing symbols")
+    if symbols.duplicated().any():
+        duplicates = sorted(symbols[symbols.duplicated(keep=False)].unique().tolist())
+        raise ValueError(f"constituent CSV contains duplicate symbols: {', '.join(duplicates)}")
     if expected_count is not None and len(symbols) != expected_count:
         raise ValueError(
             f"expected {expected_count} unique constituents, received {len(symbols)}"
