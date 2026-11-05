@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from dataclasses import dataclass
 from threading import Lock
 from typing import Any
@@ -30,6 +32,7 @@ class KiteRequestPacer:
         self._sleep = sleep
         self._monotonic = monotonic
         self._last_request: dict[str, float] = {}
+        self._blocked_until: dict[str, float] = {}
         self._lock = Lock()
 
     def wait(self, endpoint: str) -> None:
@@ -39,10 +42,22 @@ class KiteRequestPacer:
             now = self._monotonic()
             interval = ENDPOINT_INTERVAL_SECONDS[endpoint]
             previous = self._last_request.get(endpoint)
-            delay = 0.0 if previous is None else max(0.0, previous + interval - now)
+            spacing_delay = 0.0 if previous is None else max(0.0, previous + interval - now)
+            cooldown_delay = max(0.0, self._blocked_until.get(endpoint, 0.0) - now)
+            delay = max(spacing_delay, cooldown_delay)
             if delay:
                 self._sleep(delay)
             self._last_request[endpoint] = self._monotonic()
+
+    def cooldown(self, endpoint: str, seconds: float) -> None:
+        """Publish a 429 cooldown so concurrent callers share the same backoff."""
+        if endpoint not in ENDPOINT_INTERVAL_SECONDS:
+            raise ValueError(f"unknown Kite endpoint class: {endpoint}")
+        with self._lock:
+            self._blocked_until[endpoint] = max(
+                self._blocked_until.get(endpoint, 0.0),
+                self._monotonic() + max(0.0, seconds),
+            )
 
 
 # All adapters in this process share one limiter. Multi-process deployments must
@@ -90,7 +105,15 @@ def _retry_after(error: Exception) -> float | None:
     try:
         delay = float(raw)
     except (TypeError, ValueError):
-        return None
+        if not isinstance(raw, str):
+            return None
+        try:
+            retry_at = parsedate_to_datetime(raw)
+            if retry_at.tzinfo is None:
+                retry_at = retry_at.replace(tzinfo=timezone.utc)
+            delay = (retry_at - datetime.now(timezone.utc)).total_seconds()
+        except (TypeError, ValueError, OverflowError):
+            return None
     return max(0.0, delay)
 
 
@@ -138,6 +161,7 @@ class KiteRequestExecutor:
                     delay = _retry_after(error)
                     if delay is None:
                         delay = self.policy.rate_limit_cooldown_seconds
+                    self.pacer.cooldown(endpoint, delay)
                 else:
                     delay = min(
                         self.policy.max_delay_seconds,
