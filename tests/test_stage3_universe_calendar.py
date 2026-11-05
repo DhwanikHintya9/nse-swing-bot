@@ -178,3 +178,51 @@ def test_archived_2026_nse_calendar_includes_official_holidays_and_muhurat_sessi
         "2026-11-09",
         "2026-11-11",
     ]
+
+
+def test_archived_nifty500_snapshot_matches_september_2026_reconstitution() -> None:
+    from pathlib import Path
+
+    from nse_swing_bot.market_data.instruments import normalize_nifty500_constituents
+
+    source_path = (
+        Path(__file__).resolve().parents[1]
+        / "data"
+        / "universe"
+        / "source"
+        / "nse-nifty500-captured-2026-11-05.csv"
+    )
+    source = pd.read_csv(source_path, skip_blank_lines=False)
+    normalized = normalize_nifty500_constituents(
+        source,
+        effective_date=date(2026, 9, 30),
+        source_name=NIFTY_500_CSV_URL,
+        expected_count=501,
+    )
+
+    assert len(normalized) == 501
+    assert normalized["effective_date"].eq("2026-09-30").all()
+    assert normalized["series"].value_counts().to_dict() == {
+        "EQ": 496,
+        "RR": 3,
+        "BE": 2,
+    }
+    assert normalized["isin_code"].nunique() == 501
+
+    additions = {
+        "AETHER", "AVANTIFEED", "AZAD", "BAGMANE", "BHARATCOAL", "BBOX",
+        "BIRET", "CMPDI", "CLEANMAX", "CUPID", "EMBASSY", "FRACTAL",
+        "INOXINDIA", "KIRLOSBROS", "KSB", "MTARTECH", "PRIVISCL",
+        "RUBICON", "SANSERA", "SHRIPISTON", "STLTECH", "TDPOWERSYS",
+        "THANGAMAYL", "VAML", "VISL", "VOGL", "VEDPOWER",
+    }
+    exclusions = {
+        "3MINDIA", "ABFRL", "ABLBL", "BAYERCROP", "BIKAJI", "BLUEDART",
+        "BLUEJET", "BBTC", "MAPMYINDIA", "CHALET", "DCMSHRIRAM", "ERIS",
+        "GODIGIT", "INDGN", "JSWDULUX", "JUBLPHARMA", "LATENTVIEW",
+        "THELEELA", "NEWGEN", "NIVABUPA", "PFIZER", "SAPPHIRE",
+        "SAREGAMA", "SBFC", "SONATSOFTW", "SPLPETRO", "TRAVELFOOD",
+    }
+    published_symbols = set(normalized["symbol"])
+    assert additions <= published_symbols
+    assert exclusions.isdisjoint(published_symbols)
