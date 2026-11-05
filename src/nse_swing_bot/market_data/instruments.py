@@ -154,7 +154,10 @@ def select_constituents_by_series(
     series = frame["series"].astype("string").str.strip().str.upper()
     if series.isna().any() or series.eq("").any():
         raise ValueError("constituent frame contains blank or missing series")
-    return frame.loc[series.isin(normalized_allowed)].copy().reset_index(drop=True)
+    selected = frame.loc[series.isin(normalized_allowed)].copy().reset_index(drop=True)
+    if selected.empty:
+        raise ValueError("allowed_series did not match any constituents")
+    return selected
 
 
 def load_nifty500_constituents(
