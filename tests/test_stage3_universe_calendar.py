@@ -369,3 +369,6 @@ def test_strategy_series_filter_requires_explicit_policy_and_preserves_source_un
 
     with pytest.raises(ValueError, match="explicit series"):
         select_constituents_by_series(universe, set())
+
+    with pytest.raises(ValueError, match="did not match"):
+        select_constituents_by_series(universe, {"EQQ"})
