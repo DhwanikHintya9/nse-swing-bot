@@ -23,6 +23,18 @@ This document separates automated/code-level validation from live operational ac
 
    The command uses the official NSE endpoint, browser-compatible headers, a 60-second timeout, and bounded transient retries. It writes an immutable normalized snapshot under `data/universe/`; an existing dated snapshot is never overwritten.
 2. Configure Kite credentials locally through environment variables or a secret manager. Never commit or paste API secrets or access tokens.
+
+   On PowerShell, set them only in the local shell, then run the read-only smoke test:
+
+   ```powershell
+   $env:KITE_API_KEY = "<your-api-key>"
+   $env:KITE_ACCESS_TOKEN = "<your-access-token>"
+   python scripts/kite_read_only_smoke.py --symbol RELIANCE --from-date 2026-11-02 --to-date 2026-11-04
+   Remove-Item Env:KITE_API_KEY
+   Remove-Item Env:KITE_ACCESS_TOKEN
+   ```
+
+   The script calls profile, NSE instruments, and daily historical data only. It never calls order endpoints. A Kite Connect plan with market-data access is required; there is no sandbox.
 3. Use read-only Kite endpoints only for the smoke test: profile/session validation, instrument master retrieval, and a small historical candle range. Do not place, modify, or cancel orders.
 4. Archive official event records and independent company/secondary references. Normalize and review them before setting any per-symbol coverage manifest to complete.
 5. Keep the entry gate closed for symbols with missing, incomplete, stale, late, unverified, or conflicting event coverage.
