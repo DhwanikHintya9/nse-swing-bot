@@ -13,7 +13,6 @@ from nse_swing_bot.market_data.event_calendar import (
     write_event_snapshot,
 )
 
-
 DECISION = datetime(2026, 11, 4, 10, 0, tzinfo=UTC)
 PRIMARY = "https://www.nseindia.com/companies-listing/corporate-filings-announcements"
 SECONDARY = "https://www.bseindia.com/corporates.html"
