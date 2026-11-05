@@ -193,3 +193,19 @@ def test_entry_date_before_decision_date_is_rejected():
 def test_primary_and_secondary_sources_must_be_independent_domains():
     with pytest.raises(ValueError, match="independent domains"):
         event(source_secondary="https://www.nseindia.com/another-page")
+
+
+
+def test_event_between_decision_and_entry_blocks_new_trade():
+    planned_entry = date(2026, 11, 6)
+    event_before_entry = event(event_date=date(2026, 11, 5))
+    result = evaluate_event_entry(
+        "ABC", DECISION, planned_entry, [event_before_entry], coverage()
+    )
+    assert not result.allowed
+    assert result.reasons == ("earnings_within_5_calendar_days:ABC-EVENT-1",)
+
+
+def test_primary_and_secondary_subdomains_are_not_independent():
+    with pytest.raises(ValueError, match="independent domains"):
+        event(source_secondary="https://filings.nseindia.com/another-page")
