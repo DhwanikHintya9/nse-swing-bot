@@ -263,3 +263,31 @@ def test_event_coverage_csv_loader_rejects_duplicate_symbols(tmp_path):
     )
     with pytest.raises(ValueError, match="duplicate coverage symbol"):
         load_event_coverage_csv(path)
+
+
+def test_event_csv_loader_wraps_missing_field_as_row_validation_error(tmp_path):
+    path = tmp_path / "events.csv"
+    path.write_text(
+        "event_id,symbol,event_type,event_date,announced_at,title,source_primary,"
+        "source_secondary,verification_status\n"
+        f"e1,ABC,earnings,2026-11-08,2026-11-03T12:00:00+00:00,Results,{PRIMARY},"
+        f"{SECONDARY}\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="invalid event CSV row"):
+        load_event_csv(path)
+
+
+def test_event_coverage_csv_loader_wraps_missing_field_as_row_validation_error(tmp_path):
+    from nse_swing_bot.market_data.event_calendar import load_event_coverage_csv
+
+    path = tmp_path / "coverage.csv"
+    path.write_text(
+        "symbol,covered_from,covered_through,captured_at,source_primary,"
+        "source_secondary,complete\n"
+        f"ABC,2026-11-01,2026-11-30,2026-11-04T09:00:00+00:00,{PRIMARY},"
+        f"{SECONDARY}\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="invalid event coverage CSV row"):
+        load_event_coverage_csv(path)
