@@ -465,3 +465,9 @@ def test_coverage_template_script_refuses_to_overwrite(tmp_path):
     )
     assert result.returncode == 2
     assert output.read_text(encoding="utf-8") == "existing"
+
+
+def test_event_snapshot_rejects_announcements_after_snapshot_capture(tmp_path):
+    future_event = event(announced_at=DECISION + timedelta(seconds=1))
+    with pytest.raises(ValueError, match="announcement cannot be after"):
+        write_event_snapshot(tmp_path, [future_event], [coverage()], DECISION)
