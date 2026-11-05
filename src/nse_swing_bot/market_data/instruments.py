@@ -124,7 +124,7 @@ def load_nifty500_constituents(
 ) -> pd.DataFrame:
     """Load an explicitly sourced constituent CSV; no guessed or hardcoded universe."""
     return normalize_nifty500_constituents(
-        pd.read_csv(csv_path), effective_date, source_name, expected_count
+        pd.read_csv(csv_path, skip_blank_lines=False), effective_date, source_name, expected_count
     )
 
 
