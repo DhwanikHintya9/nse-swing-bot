@@ -337,3 +337,35 @@ def test_nse_downloader_does_not_retry_permanent_http_errors(monkeypatch) -> Non
     with pytest.raises(HTTPError, match="Forbidden"):
         nse_sources._download_bytes(NIFTY_500_CSV_URL)
     assert len(calls) == 1
+
+
+def test_strategy_series_filter_requires_explicit_policy_and_preserves_source_universe() -> None:
+    from pathlib import Path
+
+    from nse_swing_bot.market_data.instruments import (
+        normalize_nifty500_constituents,
+        select_constituents_by_series,
+    )
+
+    source_path = (
+        Path(__file__).resolve().parents[1]
+        / "data"
+        / "universe"
+        / "source"
+        / "nse-nifty500-captured-2026-11-05.csv"
+    )
+    source = pd.read_csv(source_path, skip_blank_lines=False)
+    universe = normalize_nifty500_constituents(
+        source, date(2026, 9, 30), NIFTY_500_CSV_URL, expected_count=501
+    )
+
+    eq_only = select_constituents_by_series(universe, {"EQ"})
+    eq_and_be = select_constituents_by_series(universe, {"EQ", "BE"})
+    assert len(universe) == 501
+    assert len(eq_only) == 496
+    assert set(eq_only["series"]) == {"EQ"}
+    assert len(eq_and_be) == 498
+    assert len(universe) == 501
+
+    with pytest.raises(ValueError, match="explicit series"):
+        select_constituents_by_series(universe, set())
