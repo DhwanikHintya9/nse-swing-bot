@@ -393,6 +393,8 @@ def test_coverage_template_script_creates_all_symbols_as_incomplete(tmp_path):
     import sys
     from pathlib import Path
 
+    import pandas as pd
+
     universe = tmp_path / "universe.csv"
     universe.write_text("Symbol\nXYZ\nABC\n", encoding="utf-8")
     output = tmp_path / "coverage.csv"
