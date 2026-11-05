@@ -111,3 +111,18 @@ def test_calendar_fails_closed_outside_declared_coverage(tmp_path) -> None:
     )
     with pytest.raises(ValueError, match="coverage"):
         calendar.sessions(date(2025, 12, 31), date(2026, 1, 2))
+
+
+
+@pytest.mark.parametrize(
+    "csv, message",
+    [
+        (b"Symbol\nAAA\nAAA\n", "duplicate symbols"),
+        (b"Symbol\nAAA\n \n", "blank or missing symbols"),
+    ],
+)
+def test_nifty500_downloader_rejects_duplicate_and_blank_symbols(csv, message) -> None:
+    with pytest.raises(ValueError, match=message):
+        download_nifty500_constituents(
+            date(2026, 11, 4), downloader=lambda _: csv, expected_count=2
+        )
