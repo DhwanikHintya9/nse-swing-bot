@@ -21,6 +21,22 @@ This document separates automated/code-level validation from live operational ac
 4. Archive official event records and independent company/secondary references. Normalize and review them before setting any per-symbol coverage manifest to complete.
 5. Keep the entry gate closed for symbols with missing, incomplete, stale, late, unverified, or conflicting event coverage.
 
+## Importing reviewed corporate-event coverage
+
+Use the templates in `data/corporate_events/` to prepare the reviewed event list and one coverage row per symbol. Then validate the files against the archived NSE source universe and write an immutable snapshot:
+
+```powershell
+python scripts/import_corporate_events.py `
+  --events data/corporate_events/events-reviewed.csv `
+  --coverage data/corporate_events/coverage-reviewed.csv `
+  --universe data/universe/source/nse-nifty500-captured-2026-11-05.csv `
+  --output-dir data/corporate_events/snapshots `
+  --captured-at "2026-11-05T15:30:00+05:30" `
+  --require-complete
+```
+
+The import rejects missing or unexpected coverage symbols, event symbols outside the selected universe, duplicate universe/coverage symbols, invalid provenance, and incomplete coverage when `--require-complete` is set. If incomplete coverage is intentionally imported without that flag, the event gate still blocks entries for those symbols.
+
 ## Stage 3 exit criteria
 
 Stage 3 operational acceptance is complete only when:
