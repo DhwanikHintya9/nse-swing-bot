@@ -29,7 +29,8 @@
 ## Stage 3A — universe and calendar reliability
 
 - Added a downloader for the official NSE Nifty 500 constituent CSV linked from the NSE index page.
-- Every downloaded universe is validated for its Symbol column, uniqueness, and expected count (500 by default), then persisted as an immutable snapshot with an explicit effective date and source URL.
+- Every downloaded universe is validated against the official five-column NSE CSV schema, unique symbols and ISINs, and the current expected row count (501, verified against the NSE response on 2026-11-05). Snapshots retain company name, industry, security series, ISIN, effective date, and source URL. A future count change fails closed for review; it is not silently accepted.
+- Index membership is kept separate from cash-equity strategy eligibility. `EQ`, `BE`, and `RR` source series are retained as supplied; downstream strategy filters must make an explicit eligibility decision rather than dropping non-`EQ` members during universe ingestion.
 - Added an NSE trading-calendar loader for archived official holiday data exported to CSV. Each calendar has an explicit coverage range; requests outside that range fail closed. Special sessions require their own source reference and can include weekend Muhurat sessions.
 - Calendar source provenance is retained with each holiday row. NSE currently publishes the holiday schedule as an official web table; this implementation ingests an operator-archived CSV export and deliberately does not scrape dynamic HTML or silently infer exchange holidays.
 - Historical membership is not reconstructed by pretending the current list was always valid. Collect dated snapshots and official effective-date change notices before building exact membership intervals.
