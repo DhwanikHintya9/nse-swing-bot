@@ -43,6 +43,19 @@ This document separates automated/code-level validation from live operational ac
 
 Use the templates in `data/corporate_events/` to prepare the reviewed event list and one coverage row per symbol. Then validate the files against the archived NSE source universe and write an immutable snapshot:
 
+Generate a complete worksheet for the archived 501-symbol universe first. Every row starts with blank source references and `complete=false`:
+
+```powershell
+python scripts/create_event_coverage_template.py `
+  --universe data/universe/source/nse-nifty500-captured-2026-11-05.csv `
+  --covered-from 2026-09-30 `
+  --covered-through 2026-11-30 `
+  --captured-at "2026-11-05T15:30:00+05:30" `
+  --output data/corporate_events/coverage-reviewed.csv
+```
+
+Fill and independently review both source references for every symbol. Set `complete=true` only after the stated symbol/date range has actually been reconciled.
+
 ```powershell
 python scripts/import_corporate_events.py `
   --events data/corporate_events/events-reviewed.csv `
