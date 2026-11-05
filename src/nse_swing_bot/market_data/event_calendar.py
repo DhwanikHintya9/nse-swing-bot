@@ -6,11 +6,11 @@ dynamic exchange pages or infer events from price/volume behaviour.
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta
 from enum import StrEnum
-import os
-import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -211,9 +211,20 @@ def write_event_snapshot(
     root.mkdir(parents=True, exist_ok=True)
     timestamp = captured_at.astimezone().strftime("%Y%m%dT%H%M%S%f%z")
     path = root / f"events-{timestamp}-{uuid4().hex[:8]}.json"
-    with path.open("x", encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2, sort_keys=True)
-        handle.write("\n")
+    fd, temporary = tempfile.mkstemp(prefix=".events-", dir=root)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, sort_keys=True, allow_nan=False)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        # Hard-link creation is atomic and fails rather than replacing an
+        # existing immutable snapshot.
+        os.link(temporary, path)
+    except Exception:
+        Path(temporary).unlink(missing_ok=True)
+        raise
+    Path(temporary).unlink(missing_ok=True)
     return path
 
 def load_event_csv(path: Path) -> list[ScheduledEvent]:
