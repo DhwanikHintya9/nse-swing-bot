@@ -21,12 +21,16 @@ from nse_swing_bot.market_data.instruments import (
 )
 
 NIFTY_500_CSV_URL = "https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv"
+NIFTY_500_REQUIRED_COLUMNS = {"company name", "industry", "symbol", "series", "isin code"}
+# Verified against the official NSE CSV response on 2026-11-05. Keep this
+# explicit so an unexpected membership-count change fails closed for review.
+NIFTY_500_EXPECTED_COUNT = 501
 
 
 def download_nifty500_constituents(
     effective_date: date,
     downloader: Callable[[str], bytes] | None = None,
-    expected_count: int = 500,
+    expected_count: int = NIFTY_500_EXPECTED_COUNT,
 ) -> pd.DataFrame:
     """Download and validate the official Nifty 500 CSV.
 
@@ -38,6 +42,12 @@ def download_nifty500_constituents(
     if not payload:
         raise ValueError("NSE Nifty 500 download returned an empty response")
     frame = pd.read_csv(BytesIO(payload), skip_blank_lines=False)
+    available_columns = {str(column).strip().lower() for column in frame.columns}
+    missing_columns = NIFTY_500_REQUIRED_COLUMNS.difference(available_columns)
+    if missing_columns:
+        raise ValueError(
+            "NSE Nifty 500 CSV missing columns: " + ", ".join(sorted(missing_columns))
+        )
     return normalize_nifty500_constituents(
         frame,
         effective_date=effective_date,
