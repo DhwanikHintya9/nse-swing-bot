@@ -43,7 +43,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Generate a per-symbol event coverage worksheet; all rows start incomplete."
     )
-    parser.add_argument("--universe", type=Path, required=True, help="NSE or normalized universe CSV")
+    parser.add_argument(
+        "--universe",
+        type=Path,
+        required=True,
+        help="NSE or normalized universe CSV",
+    )
     parser.add_argument("--covered-from", type=date.fromisoformat, required=True)
     parser.add_argument("--covered-through", type=date.fromisoformat, required=True)
     parser.add_argument("--captured-at", type=_aware_datetime, required=True)
