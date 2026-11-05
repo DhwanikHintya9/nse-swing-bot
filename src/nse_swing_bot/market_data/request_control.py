@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from threading import Lock
 from typing import Any
@@ -110,8 +110,8 @@ def _retry_after(error: Exception) -> float | None:
         try:
             retry_at = parsedate_to_datetime(raw)
             if retry_at.tzinfo is None:
-                retry_at = retry_at.replace(tzinfo=timezone.utc)
-            delay = (retry_at - datetime.now(timezone.utc)).total_seconds()
+                retry_at = retry_at.replace(tzinfo=UTC)
+            delay = (retry_at - datetime.now(UTC)).total_seconds()
         except (TypeError, ValueError, OverflowError):
             return None
     return max(0.0, delay)
