@@ -187,6 +187,8 @@ def write_event_snapshot(
         raise ValueError("captured_at must be timezone-aware")
     if any(item.captured_at > captured_at for item in coverage):
         raise ValueError("coverage cannot be captured after the snapshot")
+    if any(item.announced_at > captured_at for item in events):
+        raise ValueError("event announcement cannot be after the snapshot capture")
     event_ids = [item.event_id for item in events]
     if len(event_ids) != len(set(event_ids)):
         raise ValueError("event snapshot contains duplicate event IDs")
