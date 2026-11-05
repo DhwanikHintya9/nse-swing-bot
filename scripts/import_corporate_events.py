@@ -26,7 +26,7 @@ def main() -> int:
     parser.add_argument("--events", type=Path, required=True, help="Reviewed events CSV")
     parser.add_argument("--coverage", type=Path, required=True, help="Per-symbol coverage CSV")
     parser.add_argument(
-        "--universe", type=Path, required=True, help="Normalized dated universe snapshot CSV"
+        "--universe", type=Path, required=True, help="Universe CSV with a Symbol column (raw NSE or normalized snapshot)"
     )
     parser.add_argument("--output-dir", type=Path, required=True, help="Snapshot output directory")
     parser.add_argument(
