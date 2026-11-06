@@ -9,7 +9,7 @@ import json
 import os
 import re
 import tempfile
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 
@@ -111,15 +111,15 @@ def build_walk_forward_assignments(
         if window.test_start not in session_positions or window.test_end not in session_positions:
             raise ValueError("every test-window boundary must be an NSE trading session")
 
-    required = {
+    required = (
         "symbol",
         "decision_at",
         "horizon_sessions",
         "label_start_session",
         "label_end_session",
         "label_status",
-    }
-    missing = required.difference(labels.columns)
+    )
+    missing = set(required).difference(labels.columns)
     if missing:
         raise ValueError("labels missing required columns: " + ", ".join(sorted(missing)))
     if labels.empty:
@@ -155,12 +155,12 @@ def build_walk_forward_assignments(
     if frame.duplicated(["symbol", "decision_at", "horizon_sessions"]).any():
         raise ValueError("labels contain duplicate symbol/decision/horizon keys")
 
-    for row in frame.itertuples(index=False):
-        decision_date = row._asdict()["_decision_date"]
+    for _, row in frame.iterrows():
+        decision_date = row["_decision_date"]
         if decision_date not in session_positions:
             raise ValueError("every decision_at must map to a session in the supplied calendar")
         decision_position = session_positions[decision_date]
-        horizon = row.horizon_sessions
+        horizon = int(row["horizon_sessions"])
         expected_start = (
             calendar[decision_position + 1].date()
             if decision_position + 1 < len(calendar)
@@ -171,11 +171,11 @@ def build_walk_forward_assignments(
             if decision_position + horizon < len(calendar)
             else None
         )
-        if row._asdict()["_label_start"] != expected_start:
+        if row["_label_start"] != expected_start:
             raise ValueError("label_start_session does not match the NSE calendar horizon")
-        if row._asdict()["_label_end"] != expected_end:
+        if row["_label_end"] != expected_end:
             raise ValueError("label_end_session does not match the NSE calendar horizon")
-        if row.label_status == "complete" and expected_end is None:
+        if row["label_status"] == "complete" and expected_end is None:
             raise ValueError("complete label cannot extend beyond calendar coverage")
 
     output_rows: list[dict[str, object]] = []
@@ -209,8 +209,7 @@ def build_walk_forward_assignments(
             else:
                 date_partitions[decision_date] = ("train", "prior_chronological_history")
 
-        for row in frame.itertuples(index=False):
-            record = row._asdict()
+        for record in frame.to_dict(orient="records"):
             decision_date = record["_decision_date"]
             if decision_date not in date_partitions:
                 continue
@@ -333,7 +332,6 @@ def export_walk_forward_assignments(
         "source_label_artifact_sha256": source_label_artifact_sha256.lower(),
         "embargo_sessions": embargo_sessions,
         "min_train_sessions": min_train_sessions,
-        "windows": [asdict(window) for window in windows],
         "row_count": len(assignments),
         "columns": list(ASSIGNMENT_COLUMNS),
         "csv_filename": csv_path.name,
