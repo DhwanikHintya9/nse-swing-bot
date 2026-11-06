@@ -153,10 +153,32 @@ def run_kite_daily_pilot(
     instrument_snapshot = save_instrument_snapshot(instruments, data_root / "snapshots")
     instrument_snapshot_sha256 = sha256_file(instrument_snapshot)
 
-    selected = _resolve_pilot_instruments(universe, instruments, symbols)
+    mapping_error: str | None = None
+    try:
+        selected = _resolve_pilot_instruments(universe, instruments, symbols)
+    except ValueError as error:
+        selected = []
+        mapping_error = str(error)
+
     store = ParquetCandleStore(data_root / "parquet")
     quarantine = DataQualityQuarantine(data_root / "quarantine")
     symbol_results: list[dict[str, Any]] = []
+
+    if mapping_error is not None:
+        for raw_symbol in symbols:
+            symbol_results.append(
+                {
+                    "symbol": raw_symbol.strip().upper(),
+                    "requested_start_date": start.isoformat(),
+                    "requested_end_date": end.isoformat(),
+                    "status": "failed",
+                    "error_type": "InstrumentMappingError",
+                    "error_category": "universe_or_instrument_mapping",
+                    "error_reason": mapping_error,
+                    "snapshot_files": [],
+                    "readback_verified": False,
+                }
+            )
 
     for item in selected:
         symbol = item["symbol"]
