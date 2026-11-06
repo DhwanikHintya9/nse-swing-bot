@@ -5,8 +5,16 @@ from pathlib import Path
 import pytest
 
 from nse_swing_bot.events.capture import capture_source_bytes
-from nse_swing_bot.events.evidence import EvidenceTier
-from nse_swing_bot.events.review import load_evidence_review_manifest
+from nse_swing_bot.events.evidence import (
+    CanonicalEvent,
+    EventDirection,
+    EventTaxonomy,
+    EvidenceTier,
+)
+from nse_swing_bot.events.review import (
+    evaluate_reviewed_event_evidence,
+    load_evidence_review_manifest,
+)
 
 NOW = datetime(2026, 11, 6, 10, 0, tzinfo=UTC).isoformat()
 
@@ -207,3 +215,40 @@ def test_review_rows_reject_unknown_and_duplicate_evidence_ids(tmp_path):
     args[0].write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="duplicate review evidence_id"):
         load_evidence_review_manifest(*args)
+
+
+
+def _canonical_event():
+    return CanonicalEvent(
+        event_id="EV-001",
+        symbol="DABUR",
+        source_record_id="src-001",
+        event_class=EventTaxonomy.MANAGEMENT_GOVERNANCE,
+        event_subclass="director_appointment",
+        announcement_at=datetime(2026, 11, 6, 9, 0, tzinfo=UTC),
+        direction=EventDirection.NEUTRAL,
+        required_fact_evidence={"appointment_term": ("evidence-001",)},
+    )
+
+
+def test_pending_operator_review_cannot_satisfy_event_admission(tmp_path):
+    result = load_evidence_review_manifest(
+        *_manifests(
+            tmp_path,
+            review_status="pending",
+            source_identity_verified=False,
+            original_document_confirmed=False,
+            reviewed_attachments=[],
+            fact_reviews=[],
+        )
+    )
+    admission = evaluate_reviewed_event_evidence(_canonical_event(), result)
+    assert admission.eligible is False
+    assert "missing_evidence:appointment_term:evidence-001" in admission.reasons
+
+
+def test_accepted_operator_review_can_reach_existing_evidence_policy(tmp_path):
+    result = load_evidence_review_manifest(*_manifests(tmp_path))
+    admission = evaluate_reviewed_event_evidence(_canonical_event(), result)
+    assert admission.eligible is True
+    assert admission.admitted_evidence_ids == ("evidence-001",)
