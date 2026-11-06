@@ -83,6 +83,7 @@ def _manifests(tmp_path: Path, **review_overrides):
         "page_count": 3,
         "attachment_inventory": ["annexure-a.pdf"],
         "reviewed_attachments": ["annexure-a.pdf"],
+        "attachment_page_counts": {},
         "fact_reviews": [{
             "fact_name": "appointment_term",
             "page_number": 2,
@@ -252,3 +253,49 @@ def test_accepted_operator_review_can_reach_existing_evidence_policy(tmp_path):
     admission = evaluate_reviewed_event_evidence(_canonical_event(), result)
     assert admission.eligible is True
     assert admission.admitted_evidence_ids == ("evidence-001",)
+
+
+
+def _scope_fact_to_attachment(args, *, attachment_pages=4, include_page_count=True):
+    review_path, evidence_path, expected, captures = args
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence["fact_links"][0]["attachment_name"] = "annexure-a.pdf"
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+    review = json.loads(review_path.read_text(encoding="utf-8"))
+    review_row = review["reviews"][0]
+    review_row["fact_reviews"][0]["attachment_name"] = "annexure-a.pdf"
+    if include_page_count:
+        review_row["attachment_page_counts"] = {"annexure-a.pdf": attachment_pages}
+    review_path.write_text(json.dumps(review), encoding="utf-8")
+    return args
+
+
+def test_accepted_review_supports_fact_excerpt_from_named_annexure(tmp_path):
+    args = _scope_fact_to_attachment(_manifests(tmp_path))
+    result = load_evidence_review_manifest(*args)
+    assert result.accepted_evidence_ids == ("evidence-001",)
+    assert result.document_reviews[0].fact_reviews[0].attachment_name == "annexure-a.pdf"
+
+
+def test_attachment_fact_requires_its_own_page_count(tmp_path):
+    args = _scope_fact_to_attachment(
+        _manifests(tmp_path), include_page_count=False
+    )
+    with pytest.raises(ValueError, match="missing attachment page count"):
+        load_evidence_review_manifest(*args)
+
+
+def test_attachment_fact_page_must_be_within_attachment_page_count(tmp_path):
+    args = _scope_fact_to_attachment(_manifests(tmp_path), attachment_pages=1)
+    with pytest.raises(ValueError, match="fact page exceeds attachment page count"):
+        load_evidence_review_manifest(*args)
+
+
+def test_review_fact_cannot_reference_an_uninventoried_attachment(tmp_path):
+    args = _manifests(tmp_path)
+    review_path = args[0]
+    review = json.loads(review_path.read_text(encoding="utf-8"))
+    review["reviews"][0]["fact_reviews"][0]["attachment_name"] = "annexure-b.pdf"
+    review_path.write_text(json.dumps(review), encoding="utf-8")
+    with pytest.raises(ValueError, match="fact references unknown attachment"):
+        load_evidence_review_manifest(*args)
