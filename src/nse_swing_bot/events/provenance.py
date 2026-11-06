@@ -22,6 +22,7 @@ class EvidenceFactLink:
     evidence_id: str
     page_number: int
     exact_excerpt: str
+    attachment_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -150,11 +151,24 @@ def load_evidence_manifest(
             raise ValueError(f"unknown evidence_id: {evidence_id}")
         if record.event_id != event_id:
             raise ValueError(f"fact link event mismatch for evidence {evidence_id}")
-        key = (event_id, fact, evidence_id)
+        attachment_name = item.get("attachment_name")
+        if attachment_name is not None:
+            if not isinstance(attachment_name, str) or not attachment_name.strip():
+                raise ValueError(
+                    f"attachment_name must be a non-empty string for {evidence_id}"
+                )
+            attachment_name = attachment_name.strip()
+            if attachment_name not in attachment_names[evidence_id]:
+                raise ValueError(
+                    f"unknown fact attachment {attachment_name} for {evidence_id}"
+                )
+        key = (event_id, fact, evidence_id, attachment_name, page, excerpt)
         if key in seen:
             raise ValueError(f"duplicate fact link: {key}")
         seen.add(key)
-        fact_links.append(EvidenceFactLink(event_id, fact, evidence_id, page, excerpt))
+        fact_links.append(
+            EvidenceFactLink(event_id, fact, evidence_id, page, excerpt, attachment_name)
+        )
         required.setdefault(event_id, {}).setdefault(fact, []).append(evidence_id)
 
     return EvidenceIngestionBundle(
