@@ -51,8 +51,16 @@ class NSETradingCalendar:
             if description_column
             else pd.Series([""] * len(frame), dtype="string")
         )
+        source_column = columns.get("source")
+        sources = (
+            frame[source_column].astype("string").fillna("").str.strip()
+            if source_column
+            else pd.Series([source.strip()] * len(frame), dtype="string")
+        )
+        if (sources == "").any():
+            raise ValueError("every holiday row must retain a non-empty source")
         holidays = pd.DataFrame(
-            {"date": dates, "description": descriptions, "source": source.strip()}
+            {"date": dates, "description": descriptions, "source": sources}
         ).sort_values("date", ignore_index=True)
         special = dict(special_sessions or {})
         for day, event_source in special.items():
@@ -83,3 +91,29 @@ class NSETradingCalendar:
             if start <= day <= end
         ]
         return pd.DatetimeIndex(sorted(set(regular).union(special)), name="date")
+
+
+def load_special_sessions_csv(
+    path: Path,
+    coverage_start: date,
+    coverage_end: date,
+) -> dict[date, str]:
+    """Load explicitly sourced special sessions from a dated CSV archive."""
+    if coverage_start > coverage_end:
+        raise ValueError("coverage_start must be on or before coverage_end")
+    frame = pd.read_csv(path)
+    columns = {column.lower(): column for column in frame.columns}
+    date_column = columns.get("date")
+    source_column = columns.get("source")
+    if date_column is None or source_column is None:
+        raise ValueError("special-session CSV must contain Date and Source columns")
+    dates = pd.to_datetime(frame[date_column], errors="raise").dt.date
+    if dates.duplicated().any():
+        raise ValueError("special-session CSV contains duplicate dates")
+    sources = frame[source_column].astype("string").fillna("").str.strip()
+    if (sources == "").any():
+        raise ValueError("every special-session row must retain a non-empty source")
+    if any(day < coverage_start or day > coverage_end for day in dates):
+        raise ValueError("special-session date falls outside declared calendar coverage")
+    return dict(zip(dates, sources, strict=True))
+

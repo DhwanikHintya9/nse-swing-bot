@@ -1,0 +1,5 @@
+canonical_event_id,legacy_source_record_id,resolved_source_record_id,reason
+EV-AAVAS-01,463fe7e016f91dd6bcc,463fe7e016f91dd6bcc8,"Reviewed Stage 3C mapping audit: legacy canonical source ID is missing trailing 8; preserve original and use exact triage ID."
+EV-AAVAS-02,463fe7e016f91dd6bcc,463fe7e016f91dd6bcc8,"Reviewed Stage 3C mapping audit: legacy canonical source ID is missing trailing 8; preserve original and use exact triage ID."
+EV-AAVAS-03,463fe7e016f91dd6bcc,463fe7e016f91dd6bcc8,"Reviewed Stage 3C mapping audit: legacy canonical source ID is missing trailing 8; preserve original and use exact triage ID."
+EV-AAVAS-04,463fe7e016f91dd6bcc,463fe7e016f91dd6bcc8,"Reviewed Stage 3C mapping audit: legacy canonical source ID is missing trailing 8; preserve original and use exact triage ID."

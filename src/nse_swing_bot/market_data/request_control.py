@@ -147,15 +147,41 @@ class KiteRequestExecutor:
         self.pacer = pacer or DEFAULT_KITE_REQUEST_PACER
         self.policy = policy or RetryPolicy()
         self.sleep = sleep
+        self._stats_lock = Lock()
+        self._stats: dict[str, dict[str, int]] = {}
+
+    def snapshot_stats(self) -> dict[str, dict[str, int]]:
+        """Return a detached snapshot of logical calls, attempts, retries, and failures."""
+        with self._stats_lock:
+            return {endpoint: counts.copy() for endpoint, counts in self._stats.items()}
+
+    def _increment(self, endpoint: str, counter: str) -> None:
+        with self._stats_lock:
+            counts = self._stats.setdefault(
+                endpoint,
+                {
+                    "calls": 0,
+                    "attempts": 0,
+                    "retries": 0,
+                    "errors": 0,
+                    "terminal_failures": 0,
+                },
+            )
+            counts[counter] += 1
 
     def call(self, endpoint: str, operation: Callable[[], Any]) -> Any:
+        self._increment(endpoint, "calls")
         for attempt in range(1, self.policy.max_attempts + 1):
+            self._increment(endpoint, "attempts")
             self.pacer.wait(endpoint)
             try:
                 return operation()
             except Exception as error:
+                self._increment(endpoint, "errors")
                 if not _is_transient(error) or attempt >= self.policy.max_attempts:
+                    self._increment(endpoint, "terminal_failures")
                     raise
+                self._increment(endpoint, "retries")
                 status = _status_code(error)
                 if status == 429:
                     delay = _retry_after(error)

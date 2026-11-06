@@ -6,17 +6,20 @@ import os
 from getpass import getpass
 from pathlib import Path
 
-from dotenv import load_dotenv, set_key
+from dotenv import dotenv_values, load_dotenv, set_key
 from kiteconnect import KiteConnect
 
 
 def main() -> int:
     project_root = Path(__file__).resolve().parents[1]
     env_path = project_root / ".env"
-    load_dotenv(dotenv_path=env_path)
+    load_dotenv(dotenv_path=env_path, override=False)
+    file_env = dotenv_values(env_path)
 
-    api_key = os.environ.get("ZERODHA_API_KEY")
-    api_secret = os.environ.get("ZERODHA_API_SECRET")
+    # Keep the API key and secret from the same local .env configuration;
+    # inherited shell variables can otherwise silently select a different app.
+    api_key = file_env.get("ZERODHA_API_KEY") or os.environ.get("ZERODHA_API_KEY")
+    api_secret = file_env.get("ZERODHA_API_SECRET") or os.environ.get("ZERODHA_API_SECRET")
     if not api_key or not api_secret:
         print("Missing ZERODHA_API_KEY or ZERODHA_API_SECRET in the local .env file.")
         return 1

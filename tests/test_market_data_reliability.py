@@ -392,3 +392,30 @@ def test_service_returns_validated_frame_matching_parquet_readback(tmp_path) -> 
         persisted, fetched, check_dtype=False, check_freq=False, check_exact=False,
         rtol=1e-10, atol=1e-10,
     )
+
+
+def test_request_executor_exposes_detached_retry_statistics() -> None:
+    calls = [0]
+
+    class TemporaryServerError(Exception):
+        status_code = 503
+
+    def operation() -> str:
+        calls[0] += 1
+        if calls[0] == 1:
+            raise TemporaryServerError("temporary")
+        return "ok"
+
+    executor = no_wait_executor()
+    assert executor.call("historical", operation) == "ok"
+    stats = executor.snapshot_stats()
+
+    assert stats["historical"] == {
+        "calls": 1,
+        "attempts": 2,
+        "retries": 1,
+        "errors": 1,
+        "terminal_failures": 0,
+    }
+    stats["historical"]["calls"] = 99
+    assert executor.snapshot_stats()["historical"]["calls"] == 1
