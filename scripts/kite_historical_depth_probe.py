@@ -33,7 +33,11 @@ def main() -> int:
         type=Path,
         default=project_root / "data/universe/source/nse-nifty500-captured-2026-11-05.csv",
     )
-    parser.add_argument("--universe-effective-date", type=date.fromisoformat, default=date(2026, 9, 30))
+    parser.add_argument(
+        "--universe-effective-date",
+        type=date.fromisoformat,
+        default=date(2026, 9, 30),
+    )
     parser.add_argument("--universe-source", default=UNIVERSE_SOURCE)
     parser.add_argument("--from-date", type=date.fromisoformat, default=date(2021, 11, 6))
     parser.add_argument("--to-date", type=date.fromisoformat, default=date(2022, 11, 5))
