@@ -36,7 +36,7 @@ OUTPUT_FIELDS = (
 
 HIGH_PRIORITY_RULES = {
     "earnings_results": ("financial results", "audited results", "unaudited results", "quarterly results", "annual results"),
-    "board_decision": ("outcome of board meeting", "board meeting outcome"),
+    "board_decision": ("outcome of board meeting", "board meeting outcome", "board meeting"),
     "capital_action": ("dividend", "record date", "bonus", "stock split", "sub-division", "rights issue", "buyback", "preferential issue", "qip", "delisting"),
     "transaction": ("acquisition", "merger", "amalgamation", "scheme of arrangement", "demerger", "open offer", "sale of undertaking"),
     "management_change": ("change in management", "appointment", "resignation", "change in director", "cessation of director", "key managerial"),
