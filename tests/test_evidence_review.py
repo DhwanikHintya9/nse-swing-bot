@@ -199,7 +199,9 @@ def test_review_rows_reject_unknown_and_duplicate_evidence_ids(tmp_path):
     with pytest.raises(ValueError, match="unknown evidence_id"):
         load_evidence_review_manifest(*args)
 
-    args = _manifests(tmp_path / "second")
+    second_dir = tmp_path / "second"
+    second_dir.mkdir()
+    args = _manifests(second_dir)
     payload = json.loads(args[0].read_text(encoding="utf-8"))
     payload["reviews"].append(dict(payload["reviews"][0]))
     args[0].write_text(json.dumps(payload), encoding="utf-8")
