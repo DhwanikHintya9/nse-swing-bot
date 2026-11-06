@@ -14,8 +14,8 @@ Today's official Nifty 500 CSV is only a current anchor. It must never be projec
 
 1. Current Nifty Indices constituent download:
    - Index page: https://www.niftyindices.com/indices/equity/broad-based-indices/nifty-500
-   - Current published CSV mirror candidate: https://archives.nseindia.com/content/indices/ind_nifty500list.csv
-   - Nifty Indices CSV endpoint candidate: https://www.niftyindices.com/IndexConstituent/ind_nifty500list.csv
+   - Verified current official CSV download URL (linked directly from the NSE Nifty 500 page): https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv
+   - Nifty Indices CSV endpoint candidate: https://www.niftyindices.com/IndexConstituent/ind_nifty500list.csv (historical availability still to be verified)
 2. Historical captures of the official CSV endpoints:
    - NSE endpoint historically used the filename `ind_cnx500list.csv` before the Nifty rebranding, and later `ind_nifty500list.csv`.
    - Nifty Indices endpoint candidate: `https://www.niftyindices.com/IndexConstituent/ind_nifty500list.csv`.
@@ -30,7 +30,7 @@ The official index page exposes the current constituent download and methodology
 
 ### Tier 2 — official change evidence
 
-- Nifty Indices press-release archive: https://www.niftyindices.com/press-release
+- Nifty Indices press-release archive: https://www.niftyindices.com/press-release. The archive includes dated CNX 500 / Nifty 500 change notices (for example, older entries from 2010–2015); these are change evidence, not a complete daily membership series.
 - NSE/Nifty Indices circulars and notices: https://www.nseindia.com/companies-listing/corporate-filings-actions
 
 Use dated notices to resolve exact effective dates only when the notice explicitly names the Nifty 500 change and its effective date. Generic replacement notices must be parsed for the exact index section and verified against the actual attached document. A press-release archive is not assumed to capture all routine semi-annual market-cap reconstitutions.
