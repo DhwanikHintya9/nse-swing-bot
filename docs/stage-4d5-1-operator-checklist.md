@@ -9,13 +9,13 @@ Do not start a bulk historical download from this checklist. This is the five-sy
 - [ ] Use the archived universe source `data/universe/source/nse-nifty500-captured-2026-11-05.csv`, effective 2026-09-30. Its source CSV is not a current membership list and must not be relabelled with another effective date.
 - [ ] Keep the default five-symbol pilot unless there is a documented reason to change it: RELIANCE, HDFCBANK, INFY, SUNPHARMA, LT. All must remain EQ series and resolve to one current NSE/EQ Kite instrument row.
 - [ ] Use `data/market_calendar/nse-equity-holidays-2025-2026.csv`, sourced from NSE's official 2025 Capital Market Segment circular and 2026 equity holiday page. Its coverage supports the default 2025-11-06 to 2026-11-05 pilot window.
-- [ ] Include every special trading session that falls inside the requested window. The default window excludes the 2025-10-21 and 2026-11-08 Muhurat sessions; if a changed window includes either, add it back with `--special-session DATE=SOURCE`.
+- [ ] Include every special trading session that falls inside the requested window. The default CLI explicitly adds the NSE Budget live-trading session on Sunday 2026-02-01 using circular NSE/CMTR/72349. The default window excludes the 2025-10-21 and 2026-11-08 Muhurat sessions; if a changed window includes either, add it back with `--special-session DATE=SOURCE`.
 - [ ] Choose a completed-session end date. The requested interval must be wholly inside the calendar's declared coverage.
 - [ ] Confirm the output directory is local and Git-ignored (`data/market_data` by default).
 
 ## Run
 
-The defaults use the approved five symbols and the combined official holiday file for the rolling 12-month window:
+The defaults use the approved five symbols, the combined official holiday file, and the explicitly sourced 2026-02-01 Sunday special session for the rolling 12-month window:
 
 ```bash
 python scripts/kite_read_only_pilot.py
