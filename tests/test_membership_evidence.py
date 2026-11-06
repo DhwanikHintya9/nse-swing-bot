@@ -32,7 +32,7 @@ def _rows(prefix: str, start: int, count: int) -> list[tuple[str, str]]:
     ]
 
 
-def _ingest(path: pathlib.Path, output: pathlib.Path, as_of: date, source_kind: str = "official_snapshot") -> pathlib.Path:
+def _ingest(path: pathlib.Path, output: pathlib.Path, as_of: datetime.date, source_kind: str = "official_snapshot") -> pathlib.Path:
     evidence_url = (
         OFFICIAL_URL
         if source_kind == "official_snapshot"
