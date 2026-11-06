@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta  # noqa: I001
 
 import pandas as pd
 import pytest
