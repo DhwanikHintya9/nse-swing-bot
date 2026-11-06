@@ -52,7 +52,9 @@ def _time(value: Any, field: str, optional: bool = False) -> datetime | None:
 
 def _string_list(item: dict[str, Any], field: str) -> tuple[str, ...]:
     value = item.get(field, [])
-    if not isinstance(value, list) or any(not isinstance(part, str) or not part.strip() for part in value):
+    if not isinstance(value, list) or any(
+        not isinstance(part, str) or not part.strip() for part in value
+    ):
         raise ValueError(f"{field} must be an array of non-empty strings")
     return tuple(part.strip() for part in value)
 
