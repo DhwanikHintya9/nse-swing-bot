@@ -116,4 +116,4 @@ def load_special_sessions_csv(
     if any(day < coverage_start or day > coverage_end for day in dates):
         raise ValueError("special-session date falls outside declared calendar coverage")
     return dict(zip(dates, sources, strict=True))
-\n
+
