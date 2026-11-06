@@ -14,7 +14,8 @@ from nse_swing_bot.events.capture_verification import verify_capture_manifest
 
 MAX_PDF_BYTES = 250 * 1024 * 1024
 MAX_PDF_PAGES = 5000
-MAX_ATTACHMENT_BYTES = 100 * 1024 * 1024
+MAX_EMBEDDED_FILES = 500
+MAX_NAME_TREE_DEPTH = 32
 
 
 def _sha256(data: bytes) -> str:
@@ -51,13 +52,45 @@ def _outline_rows(reader: PdfReader) -> list[dict[str, Any]]:
     return rows
 
 
+
+def _embedded_file_names(reader: PdfReader, max_files: int) -> list[str]:
+    """Read only PDF name-tree labels; do not decompress embedded file streams."""
+    def resolve(value: Any) -> Any:
+        getter = getattr(value, "get_object", None)
+        return getter() if callable(getter) else value
+
+    root = resolve(reader.trailer["/Root"])
+    names = resolve(root.get("/Names", {}))
+    tree = resolve(names.get("/EmbeddedFiles", {}))
+    if not tree:
+        return []
+    found: list[str] = []
+    stack: list[tuple[Any, int]] = [(tree, 0)]
+    while stack:
+        node, depth = stack.pop()
+        if depth > MAX_NAME_TREE_DEPTH:
+            raise ValueError("PDF embedded-file name tree exceeds depth limit")
+        node = resolve(node)
+        pairs = node.get("/Names", [])
+        if len(pairs) % 2:
+            raise ValueError("malformed PDF embedded-file name tree")
+        for index in range(0, len(pairs), 2):
+            label = str(pairs[index])
+            found.append(label)
+            if len(found) > max_files:
+                raise ValueError("PDF embedded-file count exceeds configured limit")
+        for child in reversed(node.get("/Kids", [])):
+            stack.append((child, depth + 1))
+    return found
+
+
 def inspect_captured_pdf(
     capture_manifest_path: Path,
     output_manifest_path: Path,
     *,
     max_pdf_bytes: int = MAX_PDF_BYTES,
     max_pages: int = MAX_PDF_PAGES,
-    max_attachment_bytes: int = MAX_ATTACHMENT_BYTES,
+    max_embedded_files: int = MAX_EMBEDDED_FILES,
 ) -> Path:
     """Inspect PDF metadata, page text fingerprints, bookmarks and embedded files.
 
@@ -68,7 +101,7 @@ def inspect_captured_pdf(
     for name, value in (
         ("max_pdf_bytes", max_pdf_bytes),
         ("max_pages", max_pages),
-        ("max_attachment_bytes", max_attachment_bytes),
+        ("max_embedded_files", max_embedded_files),
     ):
         if not isinstance(value, int) or isinstance(value, bool) or value < 1:
             raise ValueError(f"{name} must be a positive integer")
@@ -108,23 +141,7 @@ def inspect_captured_pdf(
             field.lstrip("/").lower(): None for field in metadata_fields
         }
 
-        attachments: list[dict[str, Any]] = []
-        attachment_total = 0
-        for name, values in reader.attachments.items():
-            if not isinstance(values, list):
-                values = [values]
-            for index, content in enumerate(values, start=1):
-                if not isinstance(content, bytes):
-                    raise ValueError("PDF attachment content is not a byte sequence")
-                attachment_total += len(content)
-                if attachment_total > max_attachment_bytes:
-                    raise ValueError("PDF embedded attachments exceed configured byte limit")
-                attachments.append({
-                    "name": name,
-                    "occurrence": index,
-                    "byte_length": len(content),
-                    "sha256": _sha256(content),
-                })
+        attachment_names = _embedded_file_names(reader, max_embedded_files)
     except ValueError:
         raise
     except Exception as error:
@@ -146,14 +163,13 @@ def inspect_captured_pdf(
         "metadata": metadata_rows,
         "bookmarks": _outline_rows(reader),
         "pages": page_rows,
-        "embedded_attachments": attachments,
-        "embedded_attachment_count": len(attachments),
-        "embedded_attachment_total_bytes": attachment_total,
+        "embedded_attachment_names": attachment_names,
+        "embedded_attachment_count": len(attachment_names),
         "inspection_limitations": [
             "Text extraction may omit scanned/image-only content, layout, tables or handwriting.",
             "Bookmarks and metadata are document-provided labels, not proof of "
             "annexure completeness.",
-            "Embedded attachments are inventoried and hashed but not extracted.",
+            "Embedded attachment names are read from the PDF name tree only; streams are not decompressed or extracted.",
             "Inspection does not establish source authenticity, direct review, P1 status "
             "or event admission.",
         ],
