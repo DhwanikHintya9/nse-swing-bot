@@ -14,7 +14,7 @@ Each document requires:
 - `original_document`, `directly_reviewed`, `material_attachments_required`, and `material_attachments_reviewed`
 - `document_excerpt`
 
-Each fact link requires `event_id`, `fact_name`, `evidence_id`, positive one-based `page_number`, and the exact `exact_excerpt` supporting that fact.
+Each fact link requires `event_id`, `fact_name`, `evidence_id`, positive one-based `page_number`, and the exact `exact_excerpt` supporting that fact. Optional `attachment_name` scopes the page and excerpt to a named material attachment declared on that evidence document; without it, the page refers to the main source document.
 
 The caller supplies `expected_event_sources`, mapping canonical event IDs to the reconciled Stage 3C source-record IDs. Unknown events, source-ID mismatches, duplicate evidence IDs/links, cross-event links, invalid timestamps, missing excerpts/pages, and malformed evidence classifications fail closed.
 
@@ -72,3 +72,9 @@ Use `load_verified_evidence_manifest` for P1 provenance. It accepts the evidence
 Every P1 evidence document must have a local capture manifest. The verifier recomputes archive SHA-256 and byte length, then requires exact equality for canonical event ID, Stage 3C source-record ID, source URL, document type and SHA-256. Mismatches fail closed. Unknown evidence IDs in the capture map are rejected. Non-P1 research references may remain URL-only; if a capture manifest is supplied for one, it is verified and cross-checked too.
 
 This binds a provenance assertion to specific archived bytes; it does not prove the filing is authentic, that every page/annexure has been reviewed, or that the evidence should be accepted. Operators must independently review the source and keep evidence pending until that work is complete.
+
+
+
+## Attachment-scoped fact references (Stage 4B-8)
+
+A fact link may include attachment_name when the supporting clause appears in a separately inventoried annexure. The name must exactly match one of the evidence document's material_attachment_names. Unknown or undeclared attachments fail closed. This preserves the distinction between a page in the main exchange filing and a page in Annexure A/B.
