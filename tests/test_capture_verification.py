@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 import json
 from pathlib import Path
 
@@ -6,12 +7,10 @@ import pytest
 from nse_swing_bot.events.capture import capture_source_bytes
 from nse_swing_bot.events.capture_verification import verify_capture_manifest
 
-from datetime import UTC, datetime
-
 
 def _captured(tmp_path: Path):
     source = tmp_path / "source.pdf"
-    source.write_bytes(b"%PDF-1.7\nverified bytes\n")
+    source.write_bytes(b"%PDF-1.7\\nverified bytes\\n")
     captured = capture_source_bytes(
         source,
         tmp_path / "archive",
