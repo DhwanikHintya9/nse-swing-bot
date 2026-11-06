@@ -4,8 +4,8 @@ A symbol with no rows in this export is reported as having no candidates in this
 export only. It is never treated as having complete or negative event coverage.
 """
 import argparse
-import csv
 from collections import Counter
+import csv
 from pathlib import Path
 
 
