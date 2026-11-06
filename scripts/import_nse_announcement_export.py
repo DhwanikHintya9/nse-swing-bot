@@ -35,16 +35,70 @@ OUTPUT_FIELDS = (
 
 
 HIGH_PRIORITY_RULES = {
-    "earnings_results": ("financial results", "audited results", "unaudited results", "quarterly results", "annual results"),
-    "board_decision": ("outcome of board meeting", "board meeting outcome", "board meeting"),
-    "capital_action": ("dividend", "record date", "bonus", "stock split", "sub-division", "rights issue", "buyback", "preferential issue", "qip", "delisting"),
-    "transaction": ("acquisition", "merger", "amalgamation", "scheme of arrangement", "demerger", "open offer", "sale of undertaking"),
-    "management_change": ("change in management", "appointment", "resignation", "change in director", "cessation of director", "key managerial"),
-    "credit_or_distress": ("credit rating", "default", "insolvency", "resolution plan", "downgrade"),
+    "earnings_results": (
+        "financial results",
+        "audited results",
+        "unaudited results",
+        "quarterly results",
+        "annual results",
+    ),
+    "board_decision": (
+        "outcome of board meeting",
+        "board meeting outcome",
+        "board meeting",
+    ),
+    "capital_action": (
+        "dividend",
+        "record date",
+        "bonus",
+        "stock split",
+        "sub-division",
+        "rights issue",
+        "buyback",
+        "preferential issue",
+        "qip",
+        "delisting",
+    ),
+    "transaction": (
+        "acquisition",
+        "merger",
+        "amalgamation",
+        "scheme of arrangement",
+        "demerger",
+        "open offer",
+        "sale of undertaking",
+    ),
+    "management_change": (
+        "change in management",
+        "appointment",
+        "resignation",
+        "change in director",
+        "cessation of director",
+        "key managerial",
+    ),
+    "credit_or_distress": (
+        "credit rating",
+        "default",
+        "insolvency",
+        "resolution plan",
+        "downgrade",
+    ),
 }
 MEDIUM_PRIORITY_RULES = {
-    "investor_communication": ("analysts/institutional investor", "investor presentation", "investor meet", "earnings call", "conference call"),
-    "general_disclosure": ("general updates", "updates", "press release", "shareholders meeting", "monitoring agency report"),
+    "investor_communication": (
+        "analysts/institutional investor",
+        "investor presentation",
+        "investor meet",
+        "earnings call",
+        "conference call",
+    ),
+    "general_disclosure": (
+        "general updates",
+        "updates",
+        "press release",
+        "shareholders meeting",
+        "monitoring agency report",
+    ),
 }
 
 
@@ -194,7 +248,10 @@ def main() -> int:
     )
     print(f"NSE announcement candidates in universe: {included}")
     print(f"Rows excluded (blank/out-of-universe symbols): {excluded}")
-    print("Priority is a review-order hint only; event type/date remain blank and coverage incomplete.")
+    print(
+        "Priority is a review-order hint only; event type/date remain blank "
+        "and coverage incomplete."
+    )
     return 0
 
 
