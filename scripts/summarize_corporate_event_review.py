@@ -3,11 +3,9 @@
 A symbol with no rows in this export is reported as having no candidates in this
 export only. It is never treated as having complete or negative event coverage.
 """
-from __future__ import annotations
-
 import argparse
+import collections
 import csv
-from collections import Counter
 from pathlib import Path
 
 
@@ -40,7 +38,7 @@ def _read_symbols(path: Path) -> list[str]:
 def summarize_review_inbox(universe_path: Path, review_path: Path) -> str:
     symbols = _read_symbols(universe_path)
     universe = set(symbols)
-    per_symbol: Counter[str] = Counter()
+    per_symbol: collections.Counter[str] = collections.Counter()
     priorities: Counter[str] = Counter()
     statuses: Counter[str] = Counter()
     total = 0
