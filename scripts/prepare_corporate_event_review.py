@@ -17,7 +17,12 @@ QUEUE_COLUMNS = (
     "candidate_id", *COLUMNS, "source_file", "review_status",
     "secondary_source_url", "review_notes",
 )
-EVENT_TYPES = {"earnings", "ordinary_dividend", "material_corporate_action", "critical_corporate_action"}
+EVENT_TYPES = {
+    "earnings",
+    "ordinary_dividend",
+    "material_corporate_action",
+    "critical_corporate_action",
+}
 
 
 def _read_universe(path: Path) -> set[str]:
