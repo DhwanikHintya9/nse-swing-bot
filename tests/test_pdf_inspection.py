@@ -47,8 +47,7 @@ def test_pdf_inspection_records_metadata_pages_bookmarks_and_attachments(tmp_pat
         {"title": "Annexure A — Appointment", "page_number": 1}
     ]
     assert payload["embedded_attachment_count"] == 1
-    assert payload["embedded_attachments"][0]["name"] == "annexure-a.txt"
-    assert payload["embedded_attachments"][0]["sha256"]
+    assert payload["embedded_attachment_names"] == ["annexure-a.txt"]
     assert payload["pages"][0]["has_extractable_text"] is False
     assert "not proof of annexure completeness" in " ".join(
         payload["inspection_limitations"]
@@ -63,6 +62,10 @@ def test_pdf_inspection_refuses_overwrite_and_non_pdf(tmp_path):
         inspect_captured_pdf(capture.manifest_path, output)
     with pytest.raises(ValueError, match="positive integer"):
         inspect_captured_pdf(capture.manifest_path, tmp_path / "other.json", max_pages=0)
+    with pytest.raises(ValueError, match="positive integer"):
+        inspect_captured_pdf(
+            capture.manifest_path, tmp_path / "third.json", max_embedded_files=0
+        )
 
 
 def test_pdf_excerpt_requires_exact_page_text_and_is_not_normalized(
