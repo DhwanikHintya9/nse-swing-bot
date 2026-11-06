@@ -312,11 +312,17 @@ def run_kite_daily_pilot(
         },
         "symbols": symbol_results,
         "limitations": [
-            "Kite's current instrument master does not independently expose the archived ISIN lineage used here.",
-            "Symbol-to-ISIN association is inherited from the dated universe source; exact symbol-to-current-token matching is not proof of historical identity continuity.",
-            "Kite historical OHLC is provider-adjusted under Zerodha's published corporate-action policy; adjustment factors are not independently reconciled in this pilot.",
-            "Ordinary cash dividends below the provider's extraordinary-dividend threshold may not be reflected; no Stage 4D split-and-dividend adjustment claim is made.",
-            "A successful recent-window pilot does not establish five-year retention or historical universe completeness.",
+            "Kite's current instrument master does not independently expose "
+            "the archived ISIN lineage used here.",
+            "Symbol-to-ISIN association is inherited from the dated universe source; "
+            "exact symbol-to-current-token matching does not prove historical identity continuity.",
+            "Kite historical OHLC is provider-adjusted under Zerodha's published "
+            "corporate-action policy; adjustment factors are not independently reconciled.",
+            "Ordinary cash dividends below the provider's extraordinary-dividend "
+            "threshold may not be reflected; no Stage 4D split-and-dividend adjustment "
+            "claim is made.",
+            "A successful recent-window pilot does not establish five-year retention "
+            "or historical universe completeness.",
         ],
     }
     manifest = build_acquisition_manifest(manifest_payload)
