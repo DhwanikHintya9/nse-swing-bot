@@ -168,13 +168,13 @@ def load_evidence_review_manifest(
 
         attachment_inventory = _string_list(item, "attachment_inventory")
         reviewed_attachments = _string_list(item, "reviewed_attachments")
-        if not set(reviewed_attachments).issubset(attachment_inventory):
-            raise ValueError(f"reviewed attachment not in inventory for {evidence_id}")
         expected_attachments = set(
             verified.bundle.material_attachment_names[evidence_id]
         )
         if set(attachment_inventory) != expected_attachments:
             raise ValueError(f"attachment inventory mismatch for {evidence_id}")
+        if not set(reviewed_attachments).issubset(attachment_inventory):
+            raise ValueError(f"reviewed attachment not in inventory for {evidence_id}")
 
         raw_facts = item.get("fact_reviews")
         if not isinstance(raw_facts, list):
