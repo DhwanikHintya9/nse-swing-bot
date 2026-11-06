@@ -10,15 +10,13 @@ from pathlib import Path
 from dotenv import dotenv_values, load_dotenv
 from kiteconnect import KiteConnect
 
-from nse_swing_bot.market_data.pilot import run_kite_daily_pilot
+from nse_swing_bot.market_data.pilot import (
+    DEFAULT_SPECIAL_SESSIONS,
+    run_kite_daily_pilot,
+)
 
 DEFAULT_SYMBOLS = "RELIANCE,HDFCBANK,INFY,SUNPHARMA,LT"
 UNIVERSE_SOURCE = "https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv"
-DEFAULT_SPECIAL_SESSIONS = {
-    date(2026, 2, 1): "https://nsearchives.nseindia.com/content/circulars/CMTR72349.pdf",
-}
-
-
 def _special_session(value: str) -> tuple[date, str]:
     try:
         raw_date, source = value.split("=", 1)
