@@ -157,6 +157,7 @@ def test_exact_historical_dvr_isin_exception_is_accepted(tmp_path: Path) -> None
     identifiers, identity_events, membership_events = _paths(tmp_path)
     rows = _identifier_rows()
     rows[0]["identifier_value"] = "IN9155A01020"
+    rows[0]["identity_status"] = "verified_source_attributed_isin"
     events = _membership_event_rows()
     events[0]["isin_at_event"] = "IN9155A01020"
     _write(identifiers, IDENTIFIER_FIELDS, rows)
