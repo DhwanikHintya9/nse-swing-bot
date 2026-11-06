@@ -56,7 +56,12 @@ def verify_capture_manifest(manifest_path: Path) -> VerifiedCapture:
         raise ValueError("source_url must be an absolute HTTP(S) URL")
     document_type = _required_text(payload, "document_type")
     archive_filename = _required_text(payload, "archive_filename")
-    if Path(archive_filename).name != archive_filename or archive_filename in {".", ".."}:
+    if (
+        Path(archive_filename).name != archive_filename
+        or archive_filename in {".", ".."}
+        or "/" in archive_filename
+        or "\\" in archive_filename
+    ):
         raise ValueError("archive_filename must be a basename")
     if not re.fullmatch(r"[0-9a-f]{64}", str(payload.get("sha256", ""))):
         raise ValueError("sha256 must be a lowercase 64-character hex digest")
