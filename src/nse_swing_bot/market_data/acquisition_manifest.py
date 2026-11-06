@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 import tempfile
@@ -103,7 +104,7 @@ def verify_acquisition_manifest(manifest: Mapping[str, Any]) -> bool:
         raise AcquisitionManifestError("manifest_sha256 must be a 64-character hex digest")
     payload = {key: value for key, value in manifest.items() if key != "manifest_sha256"}
     rebuilt = build_acquisition_manifest(payload)
-    if not hashlib.compare_digest(rebuilt["manifest_sha256"], supplied_digest):
+    if not hmac.compare_digest(rebuilt["manifest_sha256"], supplied_digest):
         raise AcquisitionManifestError("manifest SHA-256 does not match canonical payload")
     return True
 
