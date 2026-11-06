@@ -177,7 +177,7 @@ def ingest_membership_snapshot(
     }
     manifest_bytes = json.dumps(
         manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8") + b"\n"
+    ).encode("utf-8")
     manifest["manifest_sha256"] = _sha256(manifest_bytes)
     manifest_path.write_text(
         json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
