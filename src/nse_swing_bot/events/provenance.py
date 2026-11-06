@@ -104,13 +104,16 @@ def load_evidence_manifest(
         if required_attachments and names and not all_reviewed:
             raise ValueError(f"material attachments are not fully reviewed for {evidence_id}")
 
+        retrieved_at = _time(item.get("retrieved_at"), "retrieved_at")
+        if retrieved_at is None:
+            raise ValueError(f"retrieved_at is required for {evidence_id}")
         record = EvidenceRecord(
             evidence_id=evidence_id,
             event_id=event_id,
             source_tier=tier,
             review_status=status,
             source_url=_text(item, "source_url"),
-            retrieved_at=_time(item.get("retrieved_at"), "retrieved_at"),
+            retrieved_at=retrieved_at,
             published_at=_time(item.get("published_at"), "published_at", optional=True),
             content_sha256=item.get("content_sha256"),
             original_document=item.get("original_document") is True,
