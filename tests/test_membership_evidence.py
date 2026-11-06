@@ -38,7 +38,7 @@ def _ingest(path: Path, output: Path, as_of: date, source_kind: str = "official_
     evidence_url = (
         OFFICIAL_URL
         if source_kind == "official_snapshot"
-        else f"https://web.archive.org/web/20261106100000id_/https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
+        else "https://web.archive.org/web/20261106100000id_/https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
     )
     return ingest_membership_snapshot(
         path,
