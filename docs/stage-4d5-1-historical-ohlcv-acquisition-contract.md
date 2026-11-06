@@ -2,7 +2,7 @@
 
 ## Status
 
-**IMPLEMENTED — MOCKED PILOT AND MANIFEST FOUNDATION; LIVE LOCAL PILOT NOT RUN.**
+**IMPLEMENTED — LIVE FIVE-SYMBOL ACQUISITION EXECUTED; SPECIAL-SESSION CALENDAR RECONCILIATION APPLIED; RE-RUN PENDING.**
 
 This increment defines the acceptance contract for a read-only Kite daily-candle pilot. It does not claim that Kite data is adjusted, complete, or sufficient for the five-year study. It does not run broker orders or alter Phase 1.
 
@@ -55,6 +55,7 @@ The official Kite historical API documents the `day` interval, date/time request
 References:
 - NSE 2025 Capital Market Segment holiday circular (NSE/CMTR/65587): https://nsearchives.nseindia.com/content/circulars/CMTR65587.pdf
 - NSE 2026 official equity holiday page: https://www.nseindia.com/resources/exchange-communication-holidays
+- NSE Capital Market Circular NSE/CMTR/72349 (2026-01-16), live equity trading on Sunday 2026-02-01 for Union Budget: https://nsearchives.nseindia.com/content/circulars/CMTR72349.pdf
 - Kite historical data API: https://kite.trade/docs/connect/v3/historical/
 - Official Python client method contract: https://kite.trade/docs/pykiteconnect/v4/
 - Zerodha Support — Kite chart historical OHLC corporate-action adjustments: https://support.zerodha.com/category/trading-and-markets/charts-and-orders/charts/articles/kite-charts-not-matching-as-per-the-records-in-nse-or-bse
@@ -151,7 +152,7 @@ A successful recent-window pilot authorizes only a separate historical-depth pro
 - Each symbol manifest entry records exact inclusive request chunk ranges, chunk completion state, and request/retry counters. The instrument-master request is separately counted. Counter fields are logical calls, attempts, retries, errors, and terminal failures.
 - Extended `KiteRequestExecutor` with detached counters for logical calls, attempts, retries, errors, and terminal failures; existing pacing and retry behavior is unchanged.
 - Added `tests/test_acquisition_manifest.py`, `tests/test_acquisition_pilot.py`, and request-telemetry coverage in `tests/test_market_data_reliability.py`. The CLI help is included in the no-credentials operational smoke tests.
-- Added `data/market_calendar/nse-equity-holidays-2025-2026.csv`, sourced from the official NSE 2025 Capital Market Segment holiday circular and the official NSE 2026 equity holiday page. It covers the default rolling 12-month pilot window from 2025-11-06 through 2026-11-05. Muhurat sessions are retained as holiday dates in the source file and must be added back through explicit `--special-session` arguments if a requested pilot window includes them.
+- Added `data/market_calendar/nse-equity-holidays-2025-2026.csv`, sourced from the official NSE 2025 Capital Market Segment holiday circular and the official NSE 2026 equity holiday page. It covers the default rolling 12-month pilot window from 2025-11-06 through 2026-11-05. Muhurat sessions are retained as holiday dates in the source file and must be added back through explicit `--special-session` arguments if a requested pilot window includes them. The 2026-02-01 Sunday Union Budget live-trading session is not a regular weekday and is therefore added by the default pilot CLI from NSE circular NSE/CMTR/72349.
 - CI on the preceding implementation head passed both push and PR workflows. Fresh checks for the latest test commit are running; no live Kite request has been made by CI or this implementation session.
 
 ## Next implementation sequence
@@ -168,7 +169,7 @@ This stage is research-data acquisition only. It does not modify Phase 1 signals
 
 ## Local operator command
 
-The CLI defaults to the five-symbol EQ pilot `RELIANCE,HDFCBANK,INFY,SUNPHARMA,LT`, the archived 2026-09-30-effective Nifty 500 source, and the combined official 2025-2026 NSE equity holiday file. Its default window is 2025-11-06 through 2026-11-05, with declared calendar coverage from 2025-01-01 through 2026-12-31. Override the calendar and coverage only when using another source snapshot; separately document any special session inside the requested interval.
+The CLI defaults to the five-symbol EQ pilot `RELIANCE,HDFCBANK,INFY,SUNPHARMA,LT`, the archived 2026-09-30-effective Nifty 500 source, and the combined official 2025-2026 NSE equity holiday file. Its default window is 2025-11-06 through 2026-11-05, with declared calendar coverage from 2025-01-01 through 2026-12-31. It also automatically adds the official Sunday 2026-02-01 Union Budget trading session (NSE/CMTR/72349) to the expected session set. Override the calendar and coverage only when using another source snapshot; separately document any special session inside the requested interval.
 
 Default pilot invocation (uses the archived 2025-2026 holiday file and default 12-month date window):
 
