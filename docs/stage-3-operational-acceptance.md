@@ -78,6 +78,18 @@ python scripts/prepare_corporate_event_review.py --universe data/universe/source
 
 This script validates candidate fields, checks universe membership, deduplicates identical rows, and produces stable candidate IDs with `review_status=pending`. It does **not** fetch announcements, independently corroborate events, mark them verified, fill coverage, or create an importable reviewed snapshot. The next increment is a source-specific official-feed adapter and evidence reconciliation. Until then, all 501 coverage rows remain incomplete and entries remain blocked. Preserve operator-acquired raw exports locally under the Git-ignored `data/` directory.
 
+## Measuring the NSE announcement review backlog
+
+After generating the NSE review inbox, run the summary utility against the same archived universe:
+
+```cmd
+python scripts/summarize_corporate_event_review.py --universe data/universe/source/nse-nifty500-captured-2026-11-05.csv --input data/corporate_events/nse-announcements-review.csv
+```
+
+The report shows total candidates, unique symbols represented, high/medium review counts, review-status counts, per-symbol candidate counts, and symbols with no candidates in this particular export. It rejects candidate rows outside the selected universe and invalid priority labels.
+
+**A symbol absent from the export is not a clean bill of health.** It may have had no announcements in the selected export window, an export/filtering issue, or no matching symbol. The summary deliberately does not infer event absence, coverage completeness, or permission to trade. Keep coverage incomplete until the required date range is reconciled against independent sources.
+
 ## Importing reviewed corporate-event coverage
 
 Use the templates in `data/corporate_events/` to prepare the reviewed event list and one coverage row per symbol. Generate a complete worksheet for the archived 501-symbol universe first. Every row starts with blank source references and `complete=false`:
