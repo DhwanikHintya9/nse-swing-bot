@@ -115,6 +115,8 @@ Review data sufficiency, leakage controls, robustness, costs, and limitations. D
 - A green CI run proves software tests, not predictive value.
 - No return, win-rate, or profit-factor claim is permitted without a separately validated execution simulator and independently reviewed data.
 
-## Immediate next action
+## Stage 4D-1 status
 
-Implement Stage 4D-1 only after agreeing the exact input artifact schemas and the price-adjustment convention. Begin with schema/validation tests and a pure label builder; do not build an evaluator or tune event thresholds in the same increment.
+Implemented in `src/nse_swing_bot/research/outcomes.py` with the contract documented in `docs/stage-4d1-outcome-labels.md`. The implementation requires explicit split-and-dividend-adjusted OHLC provenance, uses NSE session offsets for 5/10/20-session forward labels, censors incomplete windows, reports overlapping label windows, and exports immutable hash-bound research-only artifacts. It does not alter Phase 1 signals or simulate trades.
+
+The next increment is Stage 4D-2: descriptive cohort evaluation with coverage/sample-size reporting and uncertainty estimates. Do not tune thresholds or fit a predictive model in that increment.
