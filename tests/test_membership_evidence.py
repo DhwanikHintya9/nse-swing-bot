@@ -21,7 +21,11 @@ def _write_snapshot(path: pathlib.Path, rows: list[tuple[str, str]]) -> pathlib.
     pd.DataFrame(
         [
             [
-                "Dummy HEG Ltd." if symbol == "DUMMYHEG" else f"Company {index}",
+                (
+                    "Dummy HEG Ltd." if symbol == "DUMMYHEG"
+                    else "Tata Motors Ltd DVR" if symbol == "TATAMTRDVR"
+                    else f"Company {index}"
+                ),
                 "Industry",
                 symbol,
                 "EQ",
@@ -193,6 +197,44 @@ def test_placeholder_is_excluded_from_isin_reconciliation(tmp_path: pathlib.Path
     assert report["intervals"][0]["previous_unresolved_identity_count"] == 1
     assert report["intervals"][0]["next_unresolved_identity_count"] == 1
     assert changes.empty
+
+
+
+def test_exact_issuer_verified_historical_dvr_isin_is_accepted_and_reconciled(
+    tmp_path: pathlib.Path,
+) -> None:
+    rows = _rows("S", 0, 499) + [("TATAMTRDVR", "IN9155A01020")]
+    source = _write_snapshot(tmp_path / "source.csv", rows)
+    snapshot_dir = tmp_path / "snapshots"
+    manifest_path = _ingest(source, snapshot_dir, datetime.date(2022, 5, 4))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    normalized = pd.read_csv(snapshot_dir / manifest["normalized_filename"])
+    dvr = normalized.loc[normalized["symbol"] == "TATAMTRDVR"].iloc[0]
+
+    assert dvr["isin"] == "IN9155A01020"
+    assert dvr["identity_status"] == "verified_source_attributed_isin"
+    assert manifest["reconciliation_eligible_row_count"] == 500
+    assert manifest["unresolved_identity_rows"] == []
+
+    later_rows = _rows("S", 0, 499) + [("TATAMTRDVR", "IN9155A01020")]
+    later = _write_snapshot(tmp_path / "later.csv", later_rows)
+    _ingest(later, snapshot_dir, datetime.date(2022, 10, 9))
+    report = membership_evidence.reconcile_membership_snapshots(
+        snapshot_dir, tmp_path / "diff.csv"
+    )
+    assert report["total_observed_changes"] == 0
+
+
+def test_historical_dvr_exception_requires_exact_company_symbol_series_and_isin(
+    tmp_path: pathlib.Path,
+) -> None:
+    rows = _rows("S", 0, 499) + [("NOT_TATAMTRDVR", "IN9155A01020")]
+    source = _write_snapshot(tmp_path / "source.csv", rows)
+    with pytest.raises(
+        membership_evidence.MembershipEvidenceError,
+        match="invalid Indian equity ISIN",
+    ):
+        _ingest(source, tmp_path / "snapshots", datetime.date(2022, 5, 4))
 
 
 def test_tampered_normalized_snapshot_is_rejected(tmp_path: pathlib.Path) -> None:
