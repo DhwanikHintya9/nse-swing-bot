@@ -34,7 +34,9 @@ def _serialize_cell(column: str, value: Any) -> str:
     if not isinstance(value, (list, tuple, dict)) and pd.isna(value):
         return ""
     if column in TUPLE_COLUMNS or isinstance(value, (list, tuple, dict)):
-        return json.dumps(_json_value(value), ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        return json.dumps(
+            _json_value(value), ensure_ascii=False, separators=(",", ":"), sort_keys=True
+        )
     if isinstance(value, (bool,)):
         return "true" if value else "false"
     if hasattr(value, "item"):
@@ -83,7 +85,9 @@ def export_research_event_frame(
         raise ValueError("research frame index must be strictly increasing")
     missing = set(DIAGNOSTIC_COLUMNS).difference(frame.columns)
     if missing:
-        raise ValueError(f"research frame is missing event diagnostics: {', '.join(sorted(missing))}")
+        raise ValueError(
+            f"research frame is missing event diagnostics: {', '.join(sorted(missing))}"
+        )
     if not len(frame):
         raise ValueError("research frame must contain at least one row")
     if frame.columns.has_duplicates:
@@ -115,7 +119,8 @@ def export_research_event_frame(
         "broker_execution_eligible": False,
         "strategy_signal_modified": False,
     }
-    manifest_bytes = (json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    manifest_json = json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True)
+    manifest_bytes = (manifest_json + "\n").encode("utf-8")
     _write_immutable(csv_path, csv_bytes)
     try:
         _write_immutable(manifest_path, manifest_bytes)
