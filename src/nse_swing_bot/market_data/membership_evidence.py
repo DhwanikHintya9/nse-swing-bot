@@ -88,13 +88,25 @@ def _read_constituents(path: Path, min_rows: int, max_rows: int) -> list[dict[st
         normalized["isin"] = re.sub(r"\s+", "", normalized["isin"]).upper()
         if not all(normalized.values()):
             raise MembershipEvidenceError(f"blank required field on CSV line {line_number}")
-        if not _ISIN_PATTERN.fullmatch(normalized["isin"]):
+        if _ISIN_PATTERN.fullmatch(normalized["isin"]):
+            normalized["identity_status"] = "verified_isin_syntax"
+        elif (
+            normalized["company_name"].casefold() == "dummy heg ltd."
+            and normalized["symbol"] == "DUMMYHEG"
+            and normalized["series"] == "EQ"
+            and normalized["isin"] == "DUM545A01024"
+        ):
+            # Preserve this exact source placeholder, but never treat it as a security ISIN.
+            normalized["identity_status"] = "source_placeholder_unresolved"
+        else:
             raise MembershipEvidenceError(
-                f"invalid Indian equity ISIN on CSV line {line_number}: {normalized['isin']}"
+                f"invalid Indian equity ISIN or unrecognized source placeholder "
+                f"on CSV line {line_number}: {normalized['isin']}"
             )
-        if normalized["isin"] in seen_isins:
-            raise MembershipEvidenceError(f"duplicate ISIN in snapshot: {normalized['isin']}")
-        seen_isins.add(normalized["isin"])
+        if normalized["identity_status"] == "verified_isin_syntax":
+            if normalized["isin"] in seen_isins:
+                raise MembershipEvidenceError(f"duplicate ISIN in snapshot: {normalized['isin']}")
+            seen_isins.add(normalized["isin"])
         rows.append(normalized)
     if not min_rows <= len(rows) <= max_rows:
         raise MembershipEvidenceError(
@@ -161,7 +173,9 @@ def ingest_membership_snapshot(
     with normalized_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["company_name", "industry", "symbol", "series", "isin"],
+            fieldnames=[
+                "company_name", "industry", "symbol", "series", "isin", "identity_status"
+            ],
             lineterminator="\n",
         )
         writer.writeheader()
@@ -181,7 +195,15 @@ def ingest_membership_snapshot(
         "normalized_filename": normalized_path.name,
         "normalized_sha256": normalized_sha256,
         "row_count": len(rows),
-        "identity_key": "isin",
+        "reconciliation_eligible_row_count": sum(
+            row["identity_status"] == "verified_isin_syntax" for row in rows
+        ),
+        "unresolved_identity_rows": [
+            {"symbol": row["symbol"], "company_name": row["company_name"], "isin": row["isin"]}
+            for row in rows
+            if row["identity_status"] != "verified_isin_syntax"
+        ],
+        "identity_key": "isin; source placeholders are retained but excluded from ISIN reconciliation",
         "membership_semantics": "snapshot_observation_not_effective_interval",
         "effective_date_claimed": False,
         "third_party_data_used_as_anchor": False,
@@ -252,8 +274,15 @@ def reconcile_membership_snapshots(snapshot_dir: Path, output_csv: Path) -> dict
     for (before_manifest, before_rows), (after_manifest, after_rows) in zip(
         loaded, loaded[1:], strict=False
     ):
-        before = {row["isin"]: row for row in before_rows}
-        after = {row["isin"]: row for row in after_rows}
+        # Only syntactically valid equity ISINs participate in identity diffs.
+        before = {
+            row["isin"]: row for row in before_rows
+            if row.get("identity_status") == "verified_isin_syntax"
+        }
+        after = {
+            row["isin"]: row for row in after_rows
+            if row.get("identity_status") == "verified_isin_syntax"
+        }
         added = sorted(after.keys() - before.keys())
         removed = sorted(before.keys() - after.keys())
         for change, identifiers, old, new in (
@@ -289,6 +318,12 @@ def reconcile_membership_snapshots(snapshot_dir: Path, output_csv: Path) -> dict
                 "next_snapshot_date": after_manifest["as_of_date"],
                 "previous_row_count": len(before),
                 "next_row_count": len(after),
+                "previous_unresolved_identity_count": sum(
+                    row.get("identity_status") != "verified_isin_syntax" for row in before_rows
+                ),
+                "next_unresolved_identity_count": sum(
+                    row.get("identity_status") != "verified_isin_syntax" for row in after_rows
+                ),
                 "observed_additions": len(added),
                 "observed_removals": len(removed),
                 "unexplained_changes": len(added) + len(removed),
