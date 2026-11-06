@@ -49,7 +49,7 @@ The 2021–2025 Muhurat dates are identified by the asterisk and explicit note i
 - A special-session row adds the date back even if it is a weekend or also appears in the holiday table.
 - The calendar is an expected-session schedule. It does not prove a particular security traded, was not suspended, or has a candle.
 - The holiday archive is built from annual circulars and the identified ad-hoc closure. Any additional emergency closure, unscheduled halt or one-off session discovered during acquisition must be added with its own official source and a regression test.
-- The archive is not yet accepted as final until the new test suite runs in CI and a reviewer checks the CSV rows against the linked circulars.
+- The calendar parser and regression suite passed CI on commit `4bd3248a4958196a8fcb9db119c7d683d5f7e0e9` (**300 tests passed; Ruff passed**). The source URLs are pinned per row, but an independent row-by-row audit against all circulars and ad-hoc notices remains a separate review task.
 
 ## 2. Point-in-time Nifty 500 membership and security identity
 
