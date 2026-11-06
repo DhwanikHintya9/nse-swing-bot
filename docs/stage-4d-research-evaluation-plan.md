@@ -123,4 +123,8 @@ Implemented in `src/nse_swing_bot/research/outcomes.py` with the contract docume
 
 Implemented in `src/nse_swing_bot/research/cohorts.py` with the input and cohort contract in `docs/stage-4d2-descriptive-cohorts.md`. The evaluator compares predeclared cohorts among unchanged Phase 1 signals, requires exact point-in-time 30-day coverage records before interpreting event/no-event groups, retains censored labels in the denominator, and reports descriptive return distributions, Wilson win-rate intervals and deterministic bootstrap median intervals. It does not fit a model, tune thresholds, or claim causal/predictive benefit.
 
-The next increment is Stage 4D-3: chronological walk-forward splits, label-window purging/embargo, and immutable evaluation manifests. No threshold search or strategy integration.
+## Stage 4D-3 status
+
+Implemented in `src/nse_swing_bot/research/splits.py` with the contract in `docs/stage-4d3-walk-forward-splits.md`. It creates expanding chronological train/test assignments, purges all symbols/horizons for a decision date when any complete label window reaches the test boundary, applies an exchange-session embargo, retains censored rows without training eligibility, and exports hash-bound research-only split manifests. The builder verifies label boundaries against the supplied NSE session calendar.
+
+Stage 4D-1 through 4D-3 now provide outcome labels, descriptive cohort summaries and chronological split assignments. The next gate is independent review of data sufficiency, survivorship/corporate-action handling and out-of-sample protocol before any performance evaluation. No model fitting or strategy integration is authorized by these stages.
