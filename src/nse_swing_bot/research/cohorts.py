@@ -76,7 +76,9 @@ def _coverage_is_complete(
         covered_from = pd.Timestamp(row["covered_from"]).date()
         covered_through = pd.Timestamp(row["covered_through"]).date()
     except (TypeError, ValueError) as error:
-        raise ValueError("complete event coverage requires valid covered_from/covered_through") from error
+        raise ValueError(
+            "complete event coverage requires valid covered_from/covered_through"
+        ) from error
     captured_at = _aware_timestamp(row["captured_at"], "coverage captured_at")
     if captured_at > decision_at:
         raise ValueError("complete event coverage was captured after its decision timestamp")
