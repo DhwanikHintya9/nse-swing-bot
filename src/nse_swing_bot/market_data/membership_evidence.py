@@ -6,6 +6,7 @@ import csv
 import hashlib
 import json
 import re
+import shutil
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
@@ -139,8 +140,12 @@ def ingest_membership_snapshot(
     stem = f"nifty500-{as_of_date.isoformat()}"
     normalized_path = output_dir / f"{stem}.csv"
     manifest_path = output_dir / f"{stem}.manifest.json"
-    if normalized_path.exists() or manifest_path.exists():
+    raw_dir = output_dir / "raw"
+    raw_path = raw_dir / f"{as_of_date.isoformat()}-{raw_sha256[:12]}-{csv_path.name}"
+    if normalized_path.exists() or manifest_path.exists() or raw_path.exists():
         raise FileExistsError(f"refusing to overwrite existing snapshot evidence for {as_of_date}")
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(csv_path, raw_path)
 
     with normalized_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
@@ -160,7 +165,7 @@ def ingest_membership_snapshot(
         "evidence_url": evidence_url,
         "published_at_utc": published,
         "captured_at_utc": captured,
-        "raw_filename": csv_path.name,
+        "raw_filename": str(raw_path.relative_to(output_dir)),
         "raw_sha256": raw_sha256,
         "normalized_filename": normalized_path.name,
         "normalized_sha256": normalized_sha256,
@@ -188,6 +193,19 @@ def _load_manifest(path: Path) -> tuple[dict[str, Any], list[dict[str, str]]]:
         raise MembershipEvidenceError(f"cannot read snapshot manifest {path}: {error}") from error
     if manifest.get("schema_version") != SCHEMA_VERSION or manifest.get("index_name") != "NIFTY 500":
         raise MembershipEvidenceError(f"unsupported membership manifest: {path}")
+    supplied_hash = manifest.get("manifest_sha256")
+    unhashed_manifest = dict(manifest)
+    unhashed_manifest.pop("manifest_sha256", None)
+    expected_manifest_hash = _sha256(
+        json.dumps(
+            unhashed_manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+    )
+    if supplied_hash != expected_manifest_hash:
+        raise MembershipEvidenceError(f"manifest hash mismatch: {path}")
+    raw_path = path.parent / str(manifest.get("raw_filename", ""))
+    if not raw_path.is_file() or _sha256(raw_path.read_bytes()) != manifest.get("raw_sha256"):
+        raise MembershipEvidenceError(f"raw source snapshot missing or hash mismatch: {path}")
     normalized_path = path.parent / str(manifest.get("normalized_filename", ""))
     if not normalized_path.is_file():
         raise MembershipEvidenceError(f"normalized snapshot missing for manifest: {path}")
