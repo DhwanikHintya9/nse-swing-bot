@@ -5,11 +5,11 @@ import pytest
 
 from nse_swing_bot.events.evidence import (
     CanonicalEvent,
+    EventDirection,
+    EventTaxonomy,
     EvidenceRecord,
     EvidenceReviewStatus,
     EvidenceTier,
-    EventDirection,
-    EventTaxonomy,
     evaluate_event_evidence,
 )
 from nse_swing_bot.events.migration import (
@@ -132,9 +132,17 @@ def test_p1_source_requires_absolute_http_url_and_sha_format():
         evidence(content_sha256="not-a-hash")
 
 
+def _alias_path() -> Path:
+    return (
+        Path(__file__).resolve().parents[1]
+        / "data"
+        / "corporate_events"
+        / "source-id-aliases.csv"
+    )
+
+
 def test_aavas_aliases_resolve_only_exact_event_ids_and_preserve_legacy_value():
-    path = Path(__file__).resolve().parents[1] / "data" / "corporate_events" / "source-id-aliases.csv"
-    aliases = load_source_id_aliases(path)
+    aliases = load_source_id_aliases(_alias_path())
     legacy = "463fe7e016f91dd6bcc"
     triage = "463fe7e016f91dd6bcc8"
     event_ids = {f"EV-AAVAS-0{i}": legacy for i in range(1, 5)}
@@ -145,8 +153,7 @@ def test_aavas_aliases_resolve_only_exact_event_ids_and_preserve_legacy_value():
 
 
 def test_alias_must_match_original_legacy_id():
-    path = Path(__file__).resolve().parents[1] / "data" / "corporate_events" / "source-id-aliases.csv"
-    aliases = load_source_id_aliases(path)
+    aliases = load_source_id_aliases(_alias_path())
     with pytest.raises(ValueError, match="legacy ID mismatch"):
         resolve_source_record_ids(
             {"EV-AAVAS-01": "different-id"},
@@ -156,8 +163,7 @@ def test_alias_must_match_original_legacy_id():
 
 
 def test_alias_target_must_exist_in_triage():
-    path = Path(__file__).resolve().parents[1] / "data" / "corporate_events" / "source-id-aliases.csv"
-    aliases = load_source_id_aliases(path)
+    aliases = load_source_id_aliases(_alias_path())
     with pytest.raises(ValueError, match="absent from triage"):
         resolve_source_record_ids(
             {"EV-AAVAS-01": "463fe7e016f91dd6bcc"},
