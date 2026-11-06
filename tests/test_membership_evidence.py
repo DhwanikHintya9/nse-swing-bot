@@ -90,7 +90,7 @@ def test_reconcile_reports_observed_changes_without_exact_effective_dates(
     changes = pd.read_csv(diff_path).to_dict("records")
     assert sum(row["change"] == "observed_addition" for row in changes) == 2
     assert sum(row["change"] == "observed_removal" for row in changes) == 2
-    assert all(row["effective_date"] == "" for row in changes)
+    assert all(pd.isna(row["effective_date"]) for row in changes)
     assert all(
         row["effective_date_status"] == "unknown_between_snapshots"
         for row in changes
