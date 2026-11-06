@@ -20,7 +20,10 @@ def test_archived_official_calendar_covers_default_pilot_window() -> None:
 
     sessions = calendar.sessions(date(2025, 11, 6), date(2026, 11, 5))
 
-    assert pd.Timestamp("2025-11-05") not in sessions
+    early_november = calendar.sessions(date(2025, 11, 4), date(2025, 11, 6))
+    assert pd.Timestamp("2025-11-04") in early_november
+    assert pd.Timestamp("2025-11-05") not in early_november
+    assert pd.Timestamp("2025-11-06") in early_november
     assert pd.Timestamp("2026-01-15") not in sessions
     assert pd.Timestamp("2026-01-26") not in sessions
     assert pd.Timestamp("2026-11-05") in sessions
