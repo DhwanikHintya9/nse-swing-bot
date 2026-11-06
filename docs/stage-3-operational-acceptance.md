@@ -48,6 +48,22 @@ python scripts/refresh_nifty500.py --effective-date 2026-09-30 --output-dir data
 
 The downloader uses the official NSE endpoint, browser-compatible headers, a 60-second timeout, and bounded transient retries. It writes an immutable normalized snapshot under `data/universe/`; an existing dated snapshot is never overwritten. Do not overwrite the already reconciled dated snapshot.
 
+## Candidate intake and review queue (unverified staging)
+
+The first automated preparation step is available as `scripts/prepare_corporate_event_review.py`. It accepts one or more **operator-acquired** announcement CSV exports with these columns:
+
+```csv
+symbol,event_type,event_date,announced_at,title,source_url
+```
+
+Use the existing `EventType` values (`earnings`, `ordinary_dividend`, `material_corporate_action`, `critical_corporate_action`), ISO dates, and timezone-aware ISO announcement timestamps. The source URL must point to the actual announcement; do not insert invented or generic URLs.
+
+```cmd
+python scripts/prepare_corporate_event_review.py --universe data/universe/source/nse-nifty500-captured-2026-11-05.csv --input data/corporate_events/announcements-acquired.csv --output data/corporate_events/event-review-queue.csv
+```
+
+This script validates candidate fields, checks universe membership, deduplicates identical rows, and produces stable candidate IDs with `review_status=pending`. It does **not** fetch announcements, independently corroborate events, mark them verified, fill coverage, or create an importable reviewed snapshot. The next increment is a source-specific official-feed adapter and evidence reconciliation. Until then, all 501 coverage rows remain incomplete and entries remain blocked. Preserve operator-acquired raw exports locally under the Git-ignored `data/` directory.
+
 ## Importing reviewed corporate-event coverage
 
 Use the templates in `data/corporate_events/` to prepare the reviewed event list and one coverage row per symbol. Generate a complete worksheet for the archived 501-symbol universe first. Every row starts with blank source references and `complete=false`:
