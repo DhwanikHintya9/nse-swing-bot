@@ -128,3 +128,12 @@ Implemented in `src/nse_swing_bot/research/cohorts.py` with the input and cohort
 Implemented in `src/nse_swing_bot/research/splits.py` with the contract in `docs/stage-4d3-walk-forward-splits.md`. It creates expanding chronological train/test assignments, purges all symbols/horizons for a decision date when any complete label window reaches the test boundary, applies an exchange-session embargo, retains censored rows without training eligibility, and exports hash-bound research-only split manifests. The builder verifies label boundaries against the supplied NSE session calendar.
 
 Stage 4D-1 through 4D-3 now provide outcome labels, descriptive cohort summaries and chronological split assignments. The next gate is independent review of data sufficiency, survivorship/corporate-action handling and out-of-sample protocol before any performance evaluation. No model fitting or strategy integration is authorized by these stages.
+
+
+## Stage 4D-4 status — data readiness review
+
+Reviewed the repository data tree and the latest Stage 3C research artifacts. Full findings and source snapshot hashes are recorded in `docs/stage-4d4-data-readiness-review.md`.
+
+**Gate decision: BLOCKED.** The only documented persisted OHLCV smoke test is three RELIANCE daily candles (2026-11-02 to 2026-11-04). There is no multi-year universe-wide price panel, populated corporate-action factor archive, historical Nifty 500 membership interval dataset, or multi-year NSE calendar. The Stage 3C event archive is a selected review sample (200 triage rows / 63 canonical events / 25-company queue), not a complete point-in-time event coverage dataset; evidence admission remains `not_evaluated`, and every queued company remains excluded from signal processing.
+
+No real-world cohort or out-of-sample performance evaluation is authorized until the data acquisition and acceptance sequence in the review document is completed. This review changes documentation only; it does not alter Phase 1, trade management, broker code or live-trading state.
