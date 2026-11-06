@@ -6,6 +6,7 @@ from pathlib import Path
 from nse_swing_bot.events.evidence import (
     CanonicalEvent,
     EvidenceAdmissionResult,
+    EvidenceReviewStatus,
     EvidenceTier,
 )
 from nse_swing_bot.events.pdf_artifacts import verify_pdf_artifact_bundle
@@ -50,7 +51,11 @@ def evaluate_preflighted_event_evidence(
         if record.source_tier != EvidenceTier.P1_DIRECT_PRIMARY_REVIEWED:
             continue
         review = review_by_id.get(evidence_id)
-        if review is None or evidence_id not in ingestion.accepted_evidence_ids:
+        if (
+            review is None
+            or review.review_status != EvidenceReviewStatus.ACCEPTED
+            or evidence_id not in ingestion.accepted_evidence_ids
+        ):
             reasons.append(f"operator_review_not_accepted:{evidence_id}")
             continue
         artifact_paths = pdf_artifacts.get(evidence_id)
