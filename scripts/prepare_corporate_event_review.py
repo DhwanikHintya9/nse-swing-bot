@@ -13,18 +13,18 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 COLUMNS = ("symbol", "event_type", "event_date", "announced_at", "title", "source_url")
-QUEUE_COLUMNS = ("candidate_id", *COLUMNS, "source_file", "review_status", "secondary_source_url", "review_notes")
+QUEUE_COLUMNS = (\n    "candidate_id", *COLUMNS, "source_file", "review_status",\n    "secondary_source_url", "review_notes",\n)
 EVENT_TYPES = {"earnings", "ordinary_dividend", "material_corporate_action", "critical_corporate_action"}
 
 
 def _read_universe(path: Path) -> set[str]:
     with path.open(encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
-        column = next((name for name in (reader.fieldnames or []) if name.strip().lower() == "symbol"), None)
+        column = next(\n            (\n                name\n                for name in (reader.fieldnames or [])\n                if name.strip().lower() == "symbol"\n            ),\n            None,\n        )
         if column is None:
             raise ValueError("universe CSV must contain a symbol column")
         symbols = [(row.get(column) or "").strip().upper() for row in reader]
-    if not symbols or any(not value for value in symbols) or len(symbols) != len(set(symbols)):
+    if (\n        not symbols\n        or any(not value for value in symbols)\n        or len(symbols) != len(set(symbols))\n    ):
         raise ValueError("universe must contain unique, nonblank symbols")
     return set(symbols)
 
@@ -50,7 +50,7 @@ def build_review_queue(universe: Path, inputs: list[Path], output: Path) -> int:
                     if fields["event_type"] not in EVENT_TYPES:
                         raise ValueError("unknown event_type")
                     date.fromisoformat(fields["event_date"])
-                    announced = datetime.fromisoformat(fields["announced_at"].replace("Z", "+00:00"))
+                    announced = datetime.fromisoformat(\n                        fields["announced_at"].replace("Z", "+00:00")\n                    )
                     if announced.utcoffset() is None:
                         raise ValueError("announced_at must include timezone")
                     if not fields["title"]:
@@ -77,7 +77,7 @@ def build_review_queue(universe: Path, inputs: list[Path], output: Path) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Stage source announcements for manual review; never verify automatically.")
+    parser = argparse.ArgumentParser(\n        description=(\n            "Stage source announcements for manual review; never verify automatically."\n        )\n    )
     parser.add_argument("--universe", required=True, type=Path)
     parser.add_argument("--input", required=True, type=Path, action="append", dest="inputs")
     parser.add_argument("--output", required=True, type=Path)
