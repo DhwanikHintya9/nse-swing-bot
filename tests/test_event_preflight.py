@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from pathlib import Path
 from types import SimpleNamespace
 
 from nse_swing_bot.events.evidence import (
@@ -108,7 +107,10 @@ def test_preflight_rejects_invalid_pdf_artifacts(tmp_path, monkeypatch):
         {"EVD-1": (tmp_path / "inspection.json", (tmp_path / "binding.json",))},
     )
     assert not result.eligible
-    assert any(reason.startswith("invalid_pdf_artifact_bundle:EVD-1:") for reason in result.reasons)
+    assert any(
+        reason.startswith("invalid_pdf_artifact_bundle:EVD-1:")
+        for reason in result.reasons
+    )
 
 
 def test_preflight_rejects_unaccepted_operator_review(tmp_path):
