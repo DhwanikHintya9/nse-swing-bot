@@ -141,3 +141,42 @@ Membership data is not accepted for research until:
 - No broker integration, order endpoint or live execution.
 - No OHLCV bulk backfill, outcome labels or performance evaluation is authorized by this tooling.
 - Corporate-action factor reconciliation remains a separate blocking gate.
+
+
+## Separate observed-change evidence classification
+
+The observed diff is an immutable snapshot comparison, not an event ledger. Use
+`scripts/classify_membership_changes.py` to produce a separate classified view.
+The script never edits `observed-membership-changes.csv`.
+
+Run:
+
+```powershell
+python scripts/classify_membership_changes.py
+```
+
+On first run, the script creates
+`data/universe/membership_reconciliation/membership-change-evidence.csv`
+as an operator-curated registry template. Populate one row per observed event
+using the exact `isin` and `change` key. Then rerun the command to create
+`classified-membership-changes.csv`.
+
+Registry classifications:
+
+- `official_index_change`: requires an HTTPS evidence URL, explicit event date,
+  and explicit membership effective date inside the observed snapshot interval.
+  Use only after checking the attached notice's Nifty 500 section.
+- `corporate_action_identity_bridge`: requires an HTTPS corporate-action source
+  and event date, but forbids a membership effective date. It establishes a
+  security-identity relationship only.
+- `unresolved_observed_change`: no asserted dates or evidence URL. Events
+  missing from the registry are also emitted as unresolved.
+
+The `conflict_flag` field records a source/snapshot discrepancy without
+rewriting either source. For example, an official notice that appears inconsistent
+with a snapshot observation must be flagged and explained in `notes`.
+
+The script rejects duplicate keys, registry entries absent from the observed
+diff, invalid dates, official effective dates outside the observation interval,
+and corporate-action rows that claim index membership dates. It does not mark
+research readiness as true.
