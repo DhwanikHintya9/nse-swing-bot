@@ -159,7 +159,7 @@ def build_classification(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_fields = observed_fields + OUTPUT_FIELDS
     with output_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=output_fields, lineterminator="\\n")
+        writer = csv.DictWriter(handle, fieldnames=output_fields, lineterminator="\n")
         writer.writeheader()
         writer.writerows(output_rows)
     return {
