@@ -174,7 +174,7 @@ python scripts/kite_read_only_pilot.py \
   --calendar-csv /path/to/official-nse-equity-calendar.csv \
   --calendar-source "NSE official equity calendar; source references recorded with the file" \
   --calendar-coverage-start 2025-11-06 \
-  --calendar-coverage-end 2026-11-05 \
+  --calendar-coverage-end 2026-12-31 \
   --from-date 2025-11-06 \
   --to-date 2026-11-05
 ```
