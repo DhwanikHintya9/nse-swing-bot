@@ -119,4 +119,8 @@ Review data sufficiency, leakage controls, robustness, costs, and limitations. D
 
 Implemented in `src/nse_swing_bot/research/outcomes.py` with the contract documented in `docs/stage-4d1-outcome-labels.md`. The implementation requires explicit split-and-dividend-adjusted OHLC provenance, uses NSE session offsets for 5/10/20-session forward labels, censors incomplete windows, reports overlapping label windows, and exports immutable hash-bound research-only artifacts. It does not alter Phase 1 signals or simulate trades.
 
-The next increment is Stage 4D-2: descriptive cohort evaluation with coverage/sample-size reporting and uncertainty estimates. Do not tune thresholds or fit a predictive model in that increment.
+## Stage 4D-2 status
+
+Implemented in `src/nse_swing_bot/research/cohorts.py` with the input and cohort contract in `docs/stage-4d2-descriptive-cohorts.md`. The evaluator compares predeclared cohorts among unchanged Phase 1 signals, requires exact point-in-time 30-day coverage records before interpreting event/no-event groups, retains censored labels in the denominator, and reports descriptive return distributions, Wilson win-rate intervals and deterministic bootstrap median intervals. It does not fit a model, tune thresholds, or claim causal/predictive benefit.
+
+The next increment is Stage 4D-3: chronological walk-forward splits, label-window purging/embargo, and immutable evaluation manifests. No threshold search or strategy integration.
