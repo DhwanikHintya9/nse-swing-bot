@@ -85,4 +85,21 @@ result = load_evidence_review_manifest(
 print(result.accepted_evidence_ids)
 ~~~
 
-The caller must still apply evaluate_event_evidence to a correctly constructed canonical event and its evidence records. This review loader does not modify source data, set legacy statuses, create canonical events, score signals, or authorize trades. No command-line wrapper or automatic promotion is provided in this stage.
+Use evaluate_reviewed_event_evidence for the admission decision after loading the review manifest. It filters the provenance bundle to accepted operator-review IDs before delegating to the existing fail-closed evaluate_event_evidence policy. A pending, rejected, conflicted or missing review therefore cannot satisfy a required fact even if an upstream provenance record was mistakenly marked accepted.
+
+~~~python
+from nse_swing_bot.events.review import (
+    evaluate_reviewed_event_evidence,
+    load_evidence_review_manifest,
+)
+
+reviewed = load_evidence_review_manifest(
+    review_path=Path("review-manifest.json"),
+    evidence_manifest_path=Path("evidence-manifest.json"),
+    expected_event_sources={"EV-001": "stage3c-source-id"},
+    capture_manifests={"EV-001-DOC-1": Path("archive/capture-manifest.json")},
+)
+admission = evaluate_reviewed_event_evidence(canonical_event, reviewed)
+~~~
+
+This bridge does not modify source data, set legacy statuses, create canonical events, score signals, or authorize trades. No command-line wrapper or automatic promotion is provided in this stage.
