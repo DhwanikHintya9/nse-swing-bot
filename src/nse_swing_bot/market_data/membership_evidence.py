@@ -21,6 +21,14 @@ _REQUIRED_ALIASES = {
     "isin": ("isin code", "isin", "isin_code"),
 }
 _ISIN_PATTERN = re.compile(r"^INE[A-Z0-9]{9}$")
+# Exact historical security identity corroborated by issuer and exchange filings.
+# This is deliberately not a general relaxation of the Indian equity ISIN rule.
+_HISTORICAL_ISIN_EXCEPTIONS = {
+    ("tata motors ltd dvr", "TATAMTRDVR", "EQ", "IN9155A01020"),
+}
+_RECONCILIATION_ELIGIBLE_STATUSES = {
+    "verified_isin_syntax", "verified_source_attributed_isin"
+}
 _ALLOWED_SOURCE_KINDS = {"official_snapshot", "wayback_capture"}
 
 
@@ -91,6 +99,13 @@ def _read_constituents(path: Path, min_rows: int, max_rows: int) -> list[dict[st
         if _ISIN_PATTERN.fullmatch(normalized["isin"]):
             normalized["identity_status"] = "verified_isin_syntax"
         elif (
+            normalized["company_name"].casefold(),
+            normalized["symbol"],
+            normalized["series"],
+            normalized["isin"],
+        ) in _HISTORICAL_ISIN_EXCEPTIONS:
+            normalized["identity_status"] = "verified_source_attributed_isin"
+        elif (
             normalized["company_name"].casefold() == "dummy heg ltd."
             and normalized["symbol"] == "DUMMYHEG"
             and normalized["series"] == "EQ"
@@ -103,7 +118,7 @@ def _read_constituents(path: Path, min_rows: int, max_rows: int) -> list[dict[st
                 f"invalid Indian equity ISIN or unrecognized source placeholder "
                 f"on CSV line {line_number}: {normalized['isin']}"
             )
-        if normalized["identity_status"] == "verified_isin_syntax":
+        if normalized["identity_status"] in _RECONCILIATION_ELIGIBLE_STATUSES:
             if normalized["isin"] in seen_isins:
                 raise MembershipEvidenceError(f"duplicate ISIN in snapshot: {normalized['isin']}")
             seen_isins.add(normalized["isin"])
@@ -196,12 +211,12 @@ def ingest_membership_snapshot(
         "normalized_sha256": normalized_sha256,
         "row_count": len(rows),
         "reconciliation_eligible_row_count": sum(
-            row["identity_status"] == "verified_isin_syntax" for row in rows
+            row["identity_status"] in _RECONCILIATION_ELIGIBLE_STATUSES for row in rows
         ),
         "unresolved_identity_rows": [
             {"symbol": row["symbol"], "company_name": row["company_name"], "isin": row["isin"]}
             for row in rows
-            if row["identity_status"] != "verified_isin_syntax"
+            if row["identity_status"] not in _RECONCILIATION_ELIGIBLE_STATUSES
         ],
         "identity_key": "isin",
         "identity_policy": (
@@ -278,14 +293,14 @@ def reconcile_membership_snapshots(snapshot_dir: Path, output_csv: Path) -> dict
     for (before_manifest, before_rows), (after_manifest, after_rows) in zip(
         loaded, loaded[1:], strict=False
     ):
-        # Only syntactically valid equity ISINs participate in identity diffs.
+        # Syntactically valid and exact source-attributed historical ISINs participate.
         before = {
             row["isin"]: row for row in before_rows
-            if row.get("identity_status") == "verified_isin_syntax"
+            if row.get("identity_status") in _RECONCILIATION_ELIGIBLE_STATUSES
         }
         after = {
             row["isin"]: row for row in after_rows
-            if row.get("identity_status") == "verified_isin_syntax"
+            if row.get("identity_status") in _RECONCILIATION_ELIGIBLE_STATUSES
         }
         added = sorted(after.keys() - before.keys())
         removed = sorted(before.keys() - after.keys())
@@ -323,10 +338,10 @@ def reconcile_membership_snapshots(snapshot_dir: Path, output_csv: Path) -> dict
                 "previous_row_count": len(before),
                 "next_row_count": len(after),
                 "previous_unresolved_identity_count": sum(
-                    row.get("identity_status") != "verified_isin_syntax" for row in before_rows
+                    row.get("identity_status") not in _RECONCILIATION_ELIGIBLE_STATUSES for row in before_rows
                 ),
                 "next_unresolved_identity_count": sum(
-                    row.get("identity_status") != "verified_isin_syntax" for row in after_rows
+                    row.get("identity_status") not in _RECONCILIATION_ELIGIBLE_STATUSES for row in after_rows
                 ),
                 "observed_additions": len(added),
                 "observed_removals": len(removed),
