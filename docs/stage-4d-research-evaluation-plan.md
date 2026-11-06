@@ -137,3 +137,12 @@ Reviewed the repository data tree and the latest Stage 3C research artifacts. Fu
 **Gate decision: BLOCKED.** The only documented persisted OHLCV smoke test is three RELIANCE daily candles (2026-11-02 to 2026-11-04). There is no multi-year universe-wide price panel, populated corporate-action factor archive, historical Nifty 500 membership interval dataset, or multi-year NSE calendar. The Stage 3C event archive is a selected review sample (200 triage rows / 63 canonical events / 25-company queue), not a complete point-in-time event coverage dataset; evidence admission remains `not_evaluated`, and every queued company remains excluded from signal processing.
 
 No real-world cohort or out-of-sample performance evaluation is authorized until the data acquisition and acceptance sequence in the review document is completed. This review changes documentation only; it does not alter Phase 1, trade management, broker code or live-trading state.
+
+
+## Stage 4D-5-1 status — historical OHLCV acquisition contract
+
+Defined in `docs/stage-4d5-1-historical-ohlcv-acquisition-contract.md`. The next increment reuses the existing Kite adapter, request pacing/retry layer, validated chunk checkpoints, OHLCV validator, quarantine and append-only Parquet store. It specifies a five-symbol, recent-12-month read-only pilot followed by a separately gated historical-depth probe.
+
+The acquisition contract requires one-to-one symbol/ISIN/instrument mapping, explicit source and calendar snapshot lineage, per-symbol coverage reporting, immutable SHA-256-bound Parquet and run-manifest artifacts, read-back verification, and zero order-endpoint calls. Kite's official historical API documentation describes daily candles and several years of history but does not guarantee a fixed retention start date or maximum daily request window; the pilot must measure actual returned coverage. Adjustment basis remains unverified until independently reconciled against corporate-action factors.
+
+**Status: design only. No code implementation, Kite download, historical-depth probe, bulk backfill, or evaluation run has been performed.** The next implementation increment is the manifest model/writer and mocked tests. A passing pilot will not by itself unblock research evaluation.
