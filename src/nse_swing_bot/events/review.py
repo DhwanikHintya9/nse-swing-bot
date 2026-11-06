@@ -189,7 +189,9 @@ def load_evidence_review_manifest(
         attachment_page_counts: dict[str, int] = {}
         for name, count in raw_attachment_counts.items():
             if not isinstance(name, str) or name not in attachment_inventory:
-                raise ValueError(f"attachment page count references unknown attachment for {evidence_id}")
+                raise ValueError(
+                    f"attachment page count references unknown attachment for {evidence_id}"
+                )
             if not isinstance(count, int) or isinstance(count, bool) or count < 1:
                 raise ValueError(f"attachment page count must be positive for {evidence_id}")
             attachment_page_counts[name] = count
