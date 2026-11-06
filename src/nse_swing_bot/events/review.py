@@ -7,7 +7,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from nse_swing_bot.events.evidence import EvidenceReviewStatus, EvidenceTier
+from nse_swing_bot.events.evidence import (
+    CanonicalEvent,
+    EvidenceAdmissionResult,
+    EvidenceReviewStatus,
+    EvidenceTier,
+    evaluate_event_evidence,
+)
 from nse_swing_bot.events.provenance import (
     VerifiedEvidenceIngestion,
     load_verified_evidence_manifest,
@@ -255,3 +261,23 @@ def load_evidence_review_manifest(
         verified_evidence=verified,
         document_reviews=tuple(reviews),
     )
+
+
+
+def evaluate_reviewed_event_evidence(
+    event: CanonicalEvent,
+    ingestion: EvidenceReviewIngestion,
+) -> EvidenceAdmissionResult:
+    """Evaluate an event using only evidence with an accepted operator review.
+
+    This is the safe admission bridge for callers using the review-manifest
+    workflow. Pending, rejected, conflicted, missing or unreviewed evidence is
+    omitted before the existing fail-closed evidence policy is evaluated.
+    """
+    accepted_ids = set(ingestion.accepted_evidence_ids)
+    records = [
+        record
+        for record in ingestion.verified_evidence.bundle.evidence_records
+        if record.evidence_id in accepted_ids
+    ]
+    return evaluate_event_evidence(event, records)
