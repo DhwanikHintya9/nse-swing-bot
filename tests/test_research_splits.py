@@ -16,6 +16,9 @@ from nse_swing_bot.research.splits import (
 def sample_split_inputs():
     sessions = pd.bdate_range("2026-01-05", periods=45, name="date")
     observations = [
+        # Earlier history remains eligible for the expanding training set.
+        ("ABC", 10, 5, "complete"),
+        ("XYZ", 10, 15, "complete"),
         # A date is purged as a group if any symbol/horizon label reaches test start.
         ("ABC", 20, 5, "complete"),
         ("XYZ", 20, 15, "complete"),
