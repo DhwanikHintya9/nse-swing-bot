@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import csv
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -138,6 +138,8 @@ def _iso_timestamp(value: str, field: str, context: str) -> datetime:
         raise LedgerValidationError(
             f"{context}: {field} must include a UTC offset or Z"
         )
+    if parsed.utcoffset() != timedelta(0):
+        raise LedgerValidationError(f"{context}: {field} must be UTC")
     return parsed
 
 
