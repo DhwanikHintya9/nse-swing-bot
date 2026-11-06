@@ -1,24 +1,20 @@
 from __future__ import annotations
 
-from datetime import date
-from json import loads
-from pathlib import Path
+import datetime
+import json
+import pathlib
 
 import pandas as pd
 import pytest
 
-from nse_swing_bot.market_data.membership_evidence import (
-    MembershipEvidenceError,
-    ingest_membership_snapshot,
-    reconcile_membership_snapshots,
-)
+import nse_swing_bot.market_data.membership_evidence as membership_evidence
 
 
 OFFICIAL_URL = "https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
 CAPTURED = "2026-11-06T10:00:00Z"
 
 
-def _write_snapshot(path: Path, rows: list[tuple[str, str]]) -> Path:
+def _write_snapshot(path: pathlib.Path, rows: list[tuple[str, str]]) -> pathlib.Path:
     pd.DataFrame(
         [
             [f"Company {index}", "Industry", symbol, "EQ", isin]
@@ -36,13 +32,13 @@ def _rows(prefix: str, start: int, count: int) -> list[tuple[str, str]]:
     ]
 
 
-def _ingest(path: Path, output: Path, as_of: date, source_kind: str = "official_snapshot") -> Path:
+def _ingest(path: pathlib.Path, output: pathlib.Path, as_of: date, source_kind: str = "official_snapshot") -> pathlib.Path:
     evidence_url = (
         OFFICIAL_URL
         if source_kind == "official_snapshot"
         else "https://web.archive.org/web/20261106100000id_/https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
     )
-    return ingest_membership_snapshot(
+    return membership_evidence.ingest_membership_snapshot(
         path,
         as_of_date=as_of,
         source_url=OFFICIAL_URL,
@@ -56,10 +52,10 @@ def _ingest(path: Path, output: Path, as_of: date, source_kind: str = "official_
     )
 
 
-def test_ingest_retains_raw_snapshot_and_verifiable_hashes(tmp_path: Path) -> None:
+def test_ingest_retains_raw_snapshot_and_verifiable_hashes(tmp_path: pathlib.Path) -> None:
     source = _write_snapshot(tmp_path / "source.csv", _rows("S", 0, 500))
-    manifest_path = _ingest(source, tmp_path / "snapshots", date(2026, 9, 30))
-    manifest = loads(manifest_path.read_text(encoding="utf-8"))
+    manifest_path = _ingest(source, tmp_path / "snapshots", datetime.date(2026, 9, 30))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
     raw_path = manifest_path.parent / manifest["raw_filename"]
     normalized_path = manifest_path.parent / manifest["normalized_filename"]
@@ -72,17 +68,17 @@ def test_ingest_retains_raw_snapshot_and_verifiable_hashes(tmp_path: Path) -> No
 
 
 def test_reconcile_reports_observed_changes_without_exact_effective_dates(
-    tmp_path: Path,
+    tmp_path: pathlib.Path,
 ) -> None:
     snapshot_dir = tmp_path / "snapshots"
     first = _write_snapshot(tmp_path / "first.csv", _rows("S", 0, 500))
     second_rows = _rows("S", 0, 498) + _rows("N", 500, 2)
     second = _write_snapshot(tmp_path / "second.csv", second_rows)
-    _ingest(first, snapshot_dir, date(2025, 9, 30))
-    _ingest(second, snapshot_dir, date(2026, 3, 31))
+    _ingest(first, snapshot_dir, datetime.date(2025, 9, 30))
+    _ingest(second, snapshot_dir, datetime.date(2026, 3, 31))
 
     diff_path = tmp_path / "diff" / "changes.csv"
-    report = reconcile_membership_snapshots(snapshot_dir, diff_path)
+    report = membership_evidence.reconcile_membership_snapshots(snapshot_dir, diff_path)
 
     assert report["snapshot_count"] == 2
     assert report["total_observed_changes"] == 4
@@ -97,12 +93,12 @@ def test_reconcile_reports_observed_changes_without_exact_effective_dates(
     )
 
 
-def test_wayback_capture_requires_official_original_source(tmp_path: Path) -> None:
+def test_wayback_capture_requires_official_original_source(tmp_path: pathlib.Path) -> None:
     source = _write_snapshot(tmp_path / "source.csv", _rows("S", 0, 500))
-    with pytest.raises(MembershipEvidenceError, match="official NSE"):
-        ingest_membership_snapshot(
+    with pytest.raises(membership_evidence.MembershipEvidenceError, match="official NSE"):
+        membership_evidence.ingest_membership_snapshot(
             source,
-            as_of_date=date(2024, 9, 30),
+            as_of_date=datetime.date(2024, 9, 30),
             source_url="https://example.com/constituents.csv",
             evidence_url="https://web.archive.org/web/20240930id_/https://example.com/constituents.csv",
             source_kind="wayback_capture",
@@ -112,12 +108,12 @@ def test_wayback_capture_requires_official_original_source(tmp_path: Path) -> No
         )
 
 
-def test_third_party_reconstruction_cannot_be_an_anchor(tmp_path: Path) -> None:
+def test_third_party_reconstruction_cannot_be_an_anchor(tmp_path: pathlib.Path) -> None:
     source = _write_snapshot(tmp_path / "source.csv", _rows("S", 0, 500))
-    with pytest.raises(MembershipEvidenceError, match="third-party reconstructions"):
-        ingest_membership_snapshot(
+    with pytest.raises(membership_evidence.MembershipEvidenceError, match="third-party reconstructions"):
+        membership_evidence.ingest_membership_snapshot(
             source,
-            as_of_date=date(2024, 9, 30),
+            as_of_date=datetime.date(2024, 9, 30),
             source_url=OFFICIAL_URL,
             evidence_url=OFFICIAL_URL,
             source_kind="third_party_reconstruction",
@@ -127,23 +123,23 @@ def test_third_party_reconstruction_cannot_be_an_anchor(tmp_path: Path) -> None:
         )
 
 
-def test_duplicate_isin_is_rejected(tmp_path: Path) -> None:
+def test_duplicate_isin_is_rejected(tmp_path: pathlib.Path) -> None:
     rows = _rows("S", 0, 499) + [("DUPLICATE", "INE000000000")]
     rows[-1] = ("DUPLICATE", rows[0][1])
     source = _write_snapshot(tmp_path / "source.csv", rows)
-    with pytest.raises(MembershipEvidenceError, match="duplicate ISIN"):
-        _ingest(source, tmp_path / "snapshots", date(2024, 9, 30))
+    with pytest.raises(membership_evidence.MembershipEvidenceError, match="duplicate ISIN"):
+        _ingest(source, tmp_path / "snapshots", datetime.date(2024, 9, 30))
 
 
-def test_tampered_normalized_snapshot_is_rejected(tmp_path: Path) -> None:
+def test_tampered_normalized_snapshot_is_rejected(tmp_path: pathlib.Path) -> None:
     source = _write_snapshot(tmp_path / "source.csv", _rows("S", 0, 500))
     snapshot_dir = tmp_path / "snapshots"
-    manifest_path = _ingest(source, snapshot_dir, date(2024, 9, 30))
+    manifest_path = _ingest(source, snapshot_dir, datetime.date(2024, 9, 30))
     second_source = _write_snapshot(tmp_path / "second.csv", _rows("T", 600, 500))
-    _ingest(second_source, snapshot_dir, date(2025, 3, 31))
-    manifest = loads(manifest_path.read_text(encoding="utf-8"))
+    _ingest(second_source, snapshot_dir, datetime.date(2025, 3, 31))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     normalized = manifest_path.parent / manifest["normalized_filename"]
     normalized.write_text(normalized.read_text(encoding="utf-8") + "tampered\n", encoding="utf-8")
 
-    with pytest.raises(MembershipEvidenceError, match="hash mismatch"):
-        reconcile_membership_snapshots(snapshot_dir, tmp_path / "diff.csv")
+    with pytest.raises(membership_evidence.MembershipEvidenceError, match="hash mismatch"):
+        membership_evidence.reconcile_membership_snapshots(snapshot_dir, tmp_path / "diff.csv")
