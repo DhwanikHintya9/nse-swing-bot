@@ -209,7 +209,9 @@ def load_verified_evidence_manifest(
         capture_path = capture_manifests.get(record.evidence_id)
         if capture_path is None:
             if record.source_tier == EvidenceTier.P1_DIRECT_PRIMARY_REVIEWED:
-                raise ValueError(f"missing verified capture manifest for P1 evidence {record.evidence_id}")
+                raise ValueError(
+                    f"missing verified capture manifest for P1 evidence {record.evidence_id}"
+                )
             continue
         capture = verify_capture_manifest(capture_path)
         document = documents[record.evidence_id]
