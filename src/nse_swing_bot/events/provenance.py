@@ -137,7 +137,7 @@ def load_evidence_manifest(
 
     fact_links: list[EvidenceFactLink] = []
     required: dict[str, dict[str, list[str]]] = {}
-    seen: set[tuple[str, str, str]] = set()
+    seen: set[tuple[str, str, str, str | None, int, str]] = set()
     for item in links:
         if not isinstance(item, dict):
             raise ValueError("each fact link must be an object")
