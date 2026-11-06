@@ -130,7 +130,7 @@ def test_validation_rejects_infinite_ohlcv() -> None:
 
 def test_nifty500_loader_requires_and_records_source(tmp_path) -> None:
     csv_path = tmp_path / "constituents.csv"
-    pd.DataFrame({"Symbol": ["ABC", "XYZ", "ABC"]}).to_csv(csv_path, index=False)
+    pd.DataFrame({"Symbol": ["ABC", "XYZ"]}).to_csv(csv_path, index=False)
     result = load_nifty500_constituents(
         csv_path, date(2026, 1, 1), "NSE official constituent file", expected_count=2
     )
@@ -260,3 +260,22 @@ def test_market_data_service_refreshes_master_and_syncs_one_symbol(tmp_path) -> 
     )
     assert len(paths) == 1
     assert store.read_latest("NSE:ABC").iloc[0]["close"] == pytest.approx(11.0)
+
+
+@pytest.mark.parametrize("symbols", [[" "], ["ABC", " ABC "], ["abc", "ABC"]])
+def test_normalize_instrument_master_rejects_blank_or_normalized_duplicate_symbols(symbols) -> None:
+    rows = [
+        {
+            "instrument_token": index + 1,
+            "tradingsymbol": symbol,
+            "name": "Example Ltd",
+            "tick_size": 0.05,
+            "lot_size": 1,
+            "instrument_type": "EQ",
+            "segment": "NSE",
+            "exchange": "NSE",
+        }
+        for index, symbol in enumerate(symbols)
+    ]
+    with pytest.raises(ValueError, match="trading symbols"):
+        normalize_instrument_master(rows)

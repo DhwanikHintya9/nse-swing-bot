@@ -8,15 +8,19 @@ import pandas as pd
 OHLCV_COLUMNS = ["open", "high", "low", "close", "volume"]
 
 
+class CandleDataError(ValueError):
+    """Invalid candle payload with the original rows retained for quarantine."""
+
+    def __init__(self, reason: str, raw_candles: pd.DataFrame) -> None:
+        super().__init__(reason)
+        self.raw_candles = raw_candles.copy()
+
+
 def validate_daily_candles(
     candles: pd.DataFrame,
     expected_sessions: pd.DatetimeIndex | None = None,
 ) -> pd.DataFrame:
-    """Validate, normalize, and sort candles without fabricating missing sessions.
-
-    If an exchange trading calendar is supplied, missing expected sessions raise
-    an error. Without one, calendar-gap validation is explicitly not attempted.
-    """
+    """Validate, normalize, and sort candles without fabricating missing sessions."""
     missing = set(OHLCV_COLUMNS).difference(candles.columns)
     if missing:
         raise ValueError(f"candle data missing columns: {', '.join(sorted(missing))}")

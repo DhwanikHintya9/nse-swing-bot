@@ -13,25 +13,24 @@ from nse_swing_bot.market_data.instruments import (
 )
 from nse_swing_bot.market_data.kite_adapter import KiteMarketDataAdapter
 from nse_swing_bot.market_data.parquet_store import ParquetCandleStore
-from nse_swing_bot.market_data.validation import validate_daily_candles
+from nse_swing_bot.market_data.quarantine import DataQualityQuarantine
+from nse_swing_bot.market_data.validation import CandleDataError, validate_daily_candles
 
 
 class MarketDataService:
-    """Coordinates the data adapter, validation, and append-only storage.
-
-    The service intentionally syncs one instrument per call. A central scheduler
-    must own pacing, retries, checkpoints, and scan-wide orchestration.
-    """
+    """Coordinates paced acquisition, validation, quarantine, and append-only storage."""
 
     def __init__(
         self,
         adapter: KiteMarketDataAdapter,
         store: ParquetCandleStore,
         snapshot_root: Path,
+        quarantine: DataQualityQuarantine | None = None,
     ) -> None:
         self.adapter = adapter
         self.store = store
         self.snapshot_root = snapshot_root
+        self.quarantine = quarantine
 
     def refresh_instrument_master(self) -> tuple[pd.DataFrame, Path]:
         rows = self.adapter.fetch_nse_instruments()
@@ -47,14 +46,50 @@ class MarketDataService:
         expected_sessions: pd.DatetimeIndex | None = None,
         chunk_days: int = 365,
     ) -> list[Path]:
-        """Fetch, validate, and append a raw snapshot for one NSE equity."""
+        """Fetch, validate, and persist one symbol's daily history."""
+        paths, _ = self.sync_daily_history_with_data(
+            instrument, start, end, expected_sessions, chunk_days
+        )
+        return paths
+
+    def sync_daily_history_with_data(
+        self,
+        instrument: pd.Series,
+        start: date,
+        end: date,
+        expected_sessions: pd.DatetimeIndex | None = None,
+        chunk_days: int = 365,
+    ) -> tuple[list[Path], pd.DataFrame]:
+        """Persist validated history and return the exact validated frame for read-back checks."""
         exchange = str(instrument["exchange"])
         symbol = str(instrument["tradingsymbol"])
         token = int(instrument["instrument_token"])
         if exchange != "NSE":
             raise ValueError("only NSE instruments are supported by this sync service")
-        candles = self.adapter.fetch_daily_candles(
-            token, start, end, chunk_days=chunk_days
-        )
-        validated = validate_daily_candles(candles, expected_sessions=expected_sessions)
-        return self.store.write_snapshot(f"{exchange}:{symbol}", validated)
+        try:
+            candles = self.adapter.fetch_daily_candles(
+                token,
+                start,
+                end,
+                chunk_days=chunk_days,
+                expected_sessions=expected_sessions,
+            )
+        except CandleDataError as error:
+            if self.quarantine is not None:
+                self.quarantine.store(
+                    f"{exchange}:{symbol}", start, end, str(error), error.raw_candles
+                )
+            raise
+
+        try:
+            validated = validate_daily_candles(
+                candles, expected_sessions=expected_sessions
+            )
+        except (ValueError, TypeError, KeyError) as error:
+            if self.quarantine is not None:
+                self.quarantine.store(
+                    f"{exchange}:{symbol}", start, end, str(error), candles
+                )
+            raise
+        paths = self.store.write_snapshot(f"{exchange}:{symbol}", validated)
+        return paths, validated
