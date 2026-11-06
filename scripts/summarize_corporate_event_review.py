@@ -39,8 +39,8 @@ def summarize_review_inbox(universe_path: Path, review_path: Path) -> str:
     symbols = _read_symbols(universe_path)
     universe = set(symbols)
     per_symbol: Counter[str] = Counter()
-    priorities: collections.Counter[str] = collections.Counter()
-    statuses: collections.Counter[str] = collections.Counter()
+    priorities: Counter[str] = Counter()
+    statuses: Counter[str] = Counter()
     total = 0
 
     with review_path.open(encoding="utf-8-sig", newline="") as handle:
