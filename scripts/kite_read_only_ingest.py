@@ -109,7 +109,7 @@ def main() -> int:
 
     print("Kite authentication: OK")
     print(f"NSE cash-equity instruments normalized: {len(instruments)}")
-    print(f"Instrument snapshot: {instrument_snapshot.relative_to(project_root)}")
+    print(f"Instrument snapshot: {instrument_snapshot}")
     print(f"Validated Kite candles: {len(fetched)}")
     print(f"Persisted Parquet snapshots: {len(paths)}")
     print(f"Persisted candles read back: {len(persisted)}")
