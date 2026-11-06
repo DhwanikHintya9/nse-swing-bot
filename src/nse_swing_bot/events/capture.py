@@ -58,6 +58,9 @@ def _copy_and_hash(source: Path, destination_dir: Path) -> tuple[Path, int, str]
                     byte_length += len(chunk)
                 output_stream.flush()
                 os.fsync(output_stream.fileno())
+        if byte_length == 0:
+            temporary_path.unlink(missing_ok=True)
+            raise ValueError("source_path must not be empty")
         return temporary_path, byte_length, digest.hexdigest()
     except Exception:
         if temporary_path is not None:
