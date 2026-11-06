@@ -211,7 +211,8 @@ def ingest_membership_snapshot(
         "normalized_sha256": normalized_sha256,
         "row_count": len(rows),
         "reconciliation_eligible_row_count": sum(
-            row["identity_status"] in _RECONCILIATION_ELIGIBLE_STATUSES for row in rows
+            row["identity_status"] in _RECONCILIATION_ELIGIBLE_STATUSES
+            for row in rows
         ),
         "unresolved_identity_rows": [
             {"symbol": row["symbol"], "company_name": row["company_name"], "isin": row["isin"]}
@@ -220,8 +221,8 @@ def ingest_membership_snapshot(
         ],
         "identity_key": "isin",
         "identity_policy": (
-            "valid equity ISINs only; recognized source placeholders are retained "
-            "but excluded from ISIN reconciliation"
+            "syntactically valid equity ISINs and exact issuer-verified historical exceptions "
+            "are reconciled; recognized source placeholders are retained but excluded"
         ),
         "membership_semantics": "snapshot_observation_not_effective_interval",
         "effective_date_claimed": False,
@@ -338,10 +339,12 @@ def reconcile_membership_snapshots(snapshot_dir: Path, output_csv: Path) -> dict
                 "previous_row_count": len(before),
                 "next_row_count": len(after),
                 "previous_unresolved_identity_count": sum(
-                    row.get("identity_status") not in _RECONCILIATION_ELIGIBLE_STATUSES for row in before_rows
+                    row.get("identity_status") not in _RECONCILIATION_ELIGIBLE_STATUSES
+                    for row in before_rows
                 ),
                 "next_unresolved_identity_count": sum(
-                    row.get("identity_status") not in _RECONCILIATION_ELIGIBLE_STATUSES for row in after_rows
+                    row.get("identity_status") not in _RECONCILIATION_ELIGIBLE_STATUSES
+                    for row in after_rows
                 ),
                 "observed_additions": len(added),
                 "observed_removals": len(removed),
