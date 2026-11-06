@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from nse_swing_bot.events.diagnostics import build_event_diagnostics
+from nse_swing_bot.events.diagnostics import DIAGNOSTIC_COLUMNS, build_event_diagnostics
 from nse_swing_bot.events.evidence import (
     EventDirection,
     EventTaxonomy,
@@ -94,7 +94,7 @@ def test_research_frame_rejects_missing_event_columns() -> None:
 def test_research_frame_rejects_naive_timestamps() -> None:
     signals = sample_signal_frame().tail(1)
     signals.index = signals.index.tz_localize(None)
-    diagnostics = pd.DataFrame(index=signals.index)
+    diagnostics = pd.DataFrame(columns=DIAGNOSTIC_COLUMNS, index=signals.index)
     with pytest.raises(ValueError, match="timezone-aware"):
         build_research_event_frame(signals, diagnostics)
 
