@@ -209,7 +209,7 @@ def validate_ledgers(
         identifier_type = _required(row, "identifier_type", context).upper()
         identifier_value = _required(row, "identifier_value", context)
         series = _required(row, "series", context).upper()
-        status = _required(row, "identity_status", context)
+        _required(row, "identity_status", context)
         if identifier_type not in IDENTIFIER_TYPES:
             raise LedgerValidationError(
                 f"{context}: unsupported identifier_type {identifier_type!r}"
