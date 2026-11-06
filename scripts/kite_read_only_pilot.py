@@ -53,13 +53,23 @@ def main() -> int:
     parser.add_argument(
         "--calendar-csv",
         type=Path,
-        default=project_root / "data/market_calendar/nse-equity-holidays-2026.csv",
+        default=project_root / "data/market_calendar/nse-equity-holidays-2025-2026.csv",
     )
-    parser.add_argument("--calendar-source", required=True)
-    parser.add_argument("--calendar-coverage-start", type=date.fromisoformat, required=True)
-    parser.add_argument("--calendar-coverage-end", type=date.fromisoformat, required=True)
-    parser.add_argument("--from-date", type=date.fromisoformat, required=True)
-    parser.add_argument("--to-date", type=date.fromisoformat, required=True)
+    parser.add_argument(
+        "--calendar-source",
+        default=(
+            "NSE Capital Market Segment 2025 Circular 170/2024 and NSE official "
+            "2026 equity holiday page; per-row source URLs are in the calendar CSV"
+        ),
+    )
+    parser.add_argument(
+        "--calendar-coverage-start", type=date.fromisoformat, default=date(2025, 1, 1)
+    )
+    parser.add_argument(
+        "--calendar-coverage-end", type=date.fromisoformat, default=date(2026, 12, 31)
+    )
+    parser.add_argument("--from-date", type=date.fromisoformat, default=date(2025, 11, 6))
+    parser.add_argument("--to-date", type=date.fromisoformat, default=date(2026, 11, 5))
     parser.add_argument(
         "--symbols",
         default=DEFAULT_SYMBOLS,
