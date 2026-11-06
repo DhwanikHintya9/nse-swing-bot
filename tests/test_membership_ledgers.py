@@ -153,6 +153,30 @@ def test_schema_header_must_match_exactly(tmp_path: Path) -> None:
         _validate((identifiers, identity_events, membership_events))
 
 
+def test_exact_historical_dvr_isin_exception_is_accepted(tmp_path: Path) -> None:
+    identifiers, identity_events, membership_events = _paths(tmp_path)
+    rows = _identifier_rows()
+    rows[0]["identifier_value"] = "IN9155A01020"
+    events = _membership_event_rows()
+    events[0]["isin_at_event"] = "IN9155A01020"
+    _write(identifiers, IDENTIFIER_FIELDS, rows)
+    _write(membership_events, MEMBERSHIP_EVENT_FIELDS, events)
+
+    assert _validate((identifiers, identity_events, membership_events))[
+        "official_membership_events"
+    ] == 1
+
+
+def test_unrecognized_non_ine_isin_is_rejected(tmp_path: Path) -> None:
+    identifiers, identity_events, membership_events = _paths(tmp_path)
+    rows = _identifier_rows()
+    rows[0]["identifier_value"] = "DUM545A01024"
+    _write(identifiers, IDENTIFIER_FIELDS, rows)
+
+    with pytest.raises(module.LedgerValidationError, match="ISIN does not match"):
+        _validate((identifiers, identity_events, membership_events))
+
+
 def test_identifier_validity_intervals_are_half_open(tmp_path: Path) -> None:
     identifiers, identity_events, membership_events = _paths(tmp_path)
     rows = _identifier_rows()
