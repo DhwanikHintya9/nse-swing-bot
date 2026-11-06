@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
+from nse_swing_bot.events import preflight
 from nse_swing_bot.events.evidence import (
     CanonicalEvent,
     EventDirection,
@@ -9,7 +10,6 @@ from nse_swing_bot.events.evidence import (
     EvidenceReviewStatus,
     EvidenceTier,
 )
-from nse_swing_bot.events import preflight
 
 
 def _setup():
