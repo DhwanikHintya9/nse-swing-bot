@@ -309,7 +309,7 @@ def export_forward_outcome_labels(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     buffer = io.StringIO(newline="")
-    writer = csv.DictWriter(buffer, fieldnames=list(OUTCOME_COLUMNS), lineterminator="\\n")
+    writer = csv.DictWriter(buffer, fieldnames=list(OUTCOME_COLUMNS), lineterminator="\n")
     writer.writeheader()
     for record in labels.to_dict(orient="records"):
         normalized = {}
@@ -348,7 +348,7 @@ def export_forward_outcome_labels(
         "strategy_signal_modified": False,
         "labels_are_simulated_trades": False,
     }
-    manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\\n").encode("utf-8")
+    manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
     _write_immutable(csv_path, csv_bytes)
     _write_immutable(manifest_path, manifest_bytes)
     return csv_path, manifest_path
