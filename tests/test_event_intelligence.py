@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -15,7 +15,6 @@ from nse_swing_bot.events.intelligence import (
 )
 
 
-UTC = timezone.utc
 AS_OF = datetime(2026, 11, 6, 10, tzinfo=UTC)
 
 
