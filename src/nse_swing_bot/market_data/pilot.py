@@ -240,6 +240,7 @@ def run_kite_daily_pilot(
             "readback_verified": False,
             "status": "failed",
         }
+        candles: pd.DataFrame | None = None
         try:
             candles = adapter.fetch_daily_candles(
                 int(instrument["instrument_token"]),
@@ -298,9 +299,14 @@ def run_kite_daily_pilot(
             result["error_type"] = type(error).__name__
             result["error_category"] = (
                 "coverage_or_validation"
-                if isinstance(error, (ValueError, AssertionError))
+                if isinstance(error, (ValueError, TypeError, KeyError, AssertionError))
                 else "acquisition_or_persistence"
             )
+            if candles is not None and isinstance(error, (ValueError, TypeError, KeyError)):
+                quarantine_path = quarantine.store(
+                    f"NSE:{symbol}", start, end, str(error), candles
+                )
+                result["quarantine_path"] = str(quarantine_path.relative_to(data_root))
         result["request_stats"] = _stats_delta(
             request_stats_before, request_executor.snapshot_stats()
         )
