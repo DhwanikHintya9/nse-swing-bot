@@ -1,6 +1,6 @@
 import hashlib
 import json
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 import pandas as pd
 import pytest
@@ -93,7 +93,8 @@ def test_all_symbols_and_horizons_at_test_date_share_test_partition() -> None:
     ]
     assert set(test_rows["partition"]) == {"test"}
     assert set(test_rows["symbol"]) == {"ABC", "XYZ"}
-    assert not bool(test_rows.loc[test_rows["label_status"] == "censored", "training_eligible"].any())
+    censored_rows = test_rows.loc[test_rows["label_status"] == "censored"]
+    assert not bool(censored_rows["training_eligible"].any())
 
 
 def test_prior_test_window_can_enter_later_expanding_training_window() -> None:
