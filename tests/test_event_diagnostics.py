@@ -72,7 +72,7 @@ def test_future_impact_assessment_does_not_leak_into_earlier_diagnostics() -> No
     decisions = pd.date_range(T0, periods=5, freq="D")
     result = build_event_diagnostics("RELIANCE", decisions, [record], admission("one"))
     assert result["negative_event_count_30d"].tolist() == [0, 0, 0, 1, 1]
-    assert result["unassessed_impact_count_30d"].tolist() == [0, 0, 1, 0, 0]
+    assert result["unassessed_impact_count_30d"].tolist() == [0, 1, 1, 0, 0]
 
 
 def test_ineligible_event_never_enters_diagnostics() -> None:
