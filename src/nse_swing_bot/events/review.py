@@ -145,12 +145,13 @@ def load_evidence_review_manifest(
         capture = verified.verified_captures.get(evidence_id)
         if capture is None:
             raise ValueError(f"missing verified capture for review {evidence_id}")
+        supplied_event_id = _required_text(item, "event_id")
         source_record_id = _required_text(item, "source_record_id")
         source_url = _required_text(item, "source_url")
         document_type = _required_text(item, "document_type")
         content_sha256 = _required_text(item, "content_sha256")
         lineage = {
-            "event_id": (record.event_id, capture.event_id),
+            "event_id": (supplied_event_id, capture.event_id),
             "source_record_id": (source_record_id, capture.source_record_id),
             "source_url": (source_url, capture.source_url),
             "document_type": (document_type, capture.document_type),
