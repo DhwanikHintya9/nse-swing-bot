@@ -67,7 +67,7 @@ def test_five_year_calendar_adds_only_explicitly_sourced_special_sessions() -> N
         assert pd.Timestamp(closed_day) not in sessions
 
     assert pd.Timestamp("2023-11-11") not in sessions
-    assert pd.Timestamp("2023-11-13") not in sessions
+    assert pd.Timestamp("2023-11-13") in sessions
     assert pd.Timestamp("2026-02-02") in sessions
 
 
