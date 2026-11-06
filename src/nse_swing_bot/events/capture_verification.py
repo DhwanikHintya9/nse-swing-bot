@@ -44,7 +44,10 @@ def verify_capture_manifest(manifest_path: Path) -> VerifiedCapture:
     if not isinstance(payload, dict) or payload.get("schema_version") != 1:
         raise ValueError("unsupported capture manifest schema_version")
     capture_mode = payload.get("capture_mode")
-    if capture_mode not in {"local_original_bytes_no_network", "zip_member_original_bytes_no_network"}:
+    if capture_mode not in {
+        "local_original_bytes_no_network",
+        "zip_member_original_bytes_no_network",
+    }:
         raise ValueError("unsupported capture_mode")
 
     event_id = _required_text(payload, "event_id")
@@ -103,7 +106,9 @@ def verify_capture_manifest(manifest_path: Path) -> VerifiedCapture:
         parent = verify_capture_manifest(parent_path)
         if parent.archive_path.suffix.lower() != ".zip":
             raise ValueError("ZIP-member parent must be a ZIP archive")
-        if (parent.event_id, parent.source_record_id, parent.source_url) != (event_id, source_record_id, source_url):
+        parent_identity = (parent.event_id, parent.source_record_id, parent.source_url)
+        child_identity = (event_id, source_record_id, source_url)
+        if parent_identity != child_identity:
             raise ValueError("parent capture event/source lineage mismatch")
         if payload.get("parent_archive_sha256") != parent.sha256:
             raise ValueError("parent archive SHA-256 does not match verified parent capture")
@@ -113,7 +118,11 @@ def verify_capture_manifest(manifest_path: Path) -> VerifiedCapture:
             raise ValueError("member_crc32 must be an eight-character lowercase hex value")
         try:
             with zipfile.ZipFile(parent.archive_path, "r") as package:
-                infos = [item for item in package.infolist() if item.filename == member_name and not item.is_dir()]
+                infos = [
+                    item
+                    for item in package.infolist()
+                    if item.filename == member_name and not item.is_dir()
+                ]
                 if len(infos) != 1:
                     raise ValueError("parent ZIP member is missing or duplicated")
                 info = infos[0]
@@ -125,7 +134,12 @@ def verify_capture_manifest(manifest_path: Path) -> VerifiedCapture:
                         member_length += len(chunk)
         except (OSError, zipfile.BadZipFile, RuntimeError) as error:
             raise ValueError("cannot verify parent ZIP member lineage") from error
-        if member_length != actual_length or member_digest.hexdigest() != expected_sha256 or f"{info.CRC:08x}" != member_crc32:
+        member_matches = (
+            member_length == actual_length
+            and member_digest.hexdigest() == expected_sha256
+            and f"{info.CRC:08x}" == member_crc32
+        )
+        if not member_matches:
             raise ValueError("child bytes do not match parent ZIP member lineage")
     return VerifiedCapture(
         manifest_path=manifest,
