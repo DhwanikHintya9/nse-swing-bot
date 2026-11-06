@@ -73,6 +73,8 @@ RELATIONSHIPS = {
 MEMBERSHIP_ACTIONS = {"addition", "removal", "correction", "revocation"}
 SHA256_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 OFFICIAL_NOTICE_HOSTS = {"niftyindices.com", "nseindia.com", "nseindia.co.in"}
+ISIN_PATTERN = re.compile(r"^INE[A-Z0-9]{9}$")
+HISTORICAL_ISIN_EXCEPTIONS = {"IN9155A01020"}
 
 
 class LedgerValidationError(ValueError):
@@ -211,6 +213,14 @@ def validate_ledgers(
         if identifier_type not in IDENTIFIER_TYPES:
             raise LedgerValidationError(
                 f"{context}: unsupported identifier_type {identifier_type!r}"
+            )
+        if identifier_type == "ISIN" and not (
+            ISIN_PATTERN.fullmatch(identifier_value)
+            or identifier_value in HISTORICAL_ISIN_EXCEPTIONS
+        ):
+            raise LedgerValidationError(
+                f"{context}: ISIN does not match the accepted syntax or exact "
+                "source-attributed historical exception"
             )
         if identifier_value != identifier_value.upper() or any(
             character.isspace() for character in identifier_value
