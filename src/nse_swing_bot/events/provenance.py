@@ -24,6 +24,9 @@ class EvidenceIngestionBundle:
     evidence_records: tuple[EvidenceRecord, ...]
     fact_links: tuple[EvidenceFactLink, ...]
     required_fact_evidence: dict[str, dict[str, tuple[str, ...]]]
+    document_types: dict[str, str]
+    source_record_ids: dict[str, str]
+    material_attachment_names: dict[str, tuple[str, ...]]
 
 
 def _text(item: dict[str, Any], field: str) -> str:
@@ -47,6 +50,13 @@ def _time(value: Any, field: str, optional: bool = False) -> datetime | None:
     return parsed
 
 
+def _string_list(item: dict[str, Any], field: str) -> tuple[str, ...]:
+    value = item.get(field, [])
+    if not isinstance(value, list) or any(not isinstance(part, str) or not part.strip() for part in value):
+        raise ValueError(f"{field} must be an array of non-empty strings")
+    return tuple(part.strip() for part in value)
+
+
 def load_evidence_manifest(
     path: Path, expected_event_sources: dict[str, str]
 ) -> EvidenceIngestionBundle:
@@ -60,12 +70,15 @@ def load_evidence_manifest(
 
     records: list[EvidenceRecord] = []
     by_id: dict[str, EvidenceRecord] = {}
+    document_types: dict[str, str] = {}
+    source_ids: dict[str, str] = {}
+    attachment_names: dict[str, tuple[str, ...]] = {}
     for item in documents:
         if not isinstance(item, dict):
             raise ValueError("each document must be an object")
         evidence_id, event_id = _text(item, "evidence_id"), _text(item, "event_id")
         source_id = _text(item, "source_record_id")
-        _text(item, "document_type")
+        document_type = _text(item, "document_type")
         if event_id not in expected_event_sources:
             raise ValueError(f"unknown canonical event: {event_id}")
         if expected_event_sources[event_id] != source_id:
@@ -77,6 +90,18 @@ def load_evidence_manifest(
             status = EvidenceReviewStatus(_text(item, "review_status"))
         except ValueError as error:
             raise ValueError(f"invalid evidence classification for {evidence_id}") from error
+
+        required_attachments = item.get("material_attachments_required") is True
+        names = _string_list(item, "material_attachment_names")
+        reviewed_names = _string_list(item, "reviewed_material_attachment_names")
+        if len(names) != len(set(names)) or len(reviewed_names) != len(set(reviewed_names)):
+            raise ValueError(f"duplicate material attachment name for {evidence_id}")
+        if not set(reviewed_names).issubset(names):
+            raise ValueError(f"reviewed attachment not declared for {evidence_id}")
+        all_reviewed = bool(names) and set(names) == set(reviewed_names)
+        if required_attachments and (not names or not all_reviewed):
+            raise ValueError(f"material attachments are not fully reviewed for {evidence_id}")
+
         record = EvidenceRecord(
             evidence_id=evidence_id,
             event_id=event_id,
@@ -88,12 +113,16 @@ def load_evidence_manifest(
             content_sha256=item.get("content_sha256"),
             original_document=item.get("original_document") is True,
             directly_reviewed=item.get("directly_reviewed") is True,
-            material_attachments_required=item.get("material_attachments_required") is True,
-            material_attachments_reviewed=item.get("material_attachments_reviewed") is True,
+            material_attachments_required=required_attachments,
+            material_attachments_reviewed=(not required_attachments or all_reviewed)
+            and item.get("material_attachments_reviewed") is True,
             exact_excerpt=_text(item, "document_excerpt"),
         )
         by_id[evidence_id] = record
         records.append(record)
+        document_types[evidence_id] = document_type
+        source_ids[evidence_id] = source_id
+        attachment_names[evidence_id] = names
 
     fact_links: list[EvidenceFactLink] = []
     required: dict[str, dict[str, list[str]]] = {}
@@ -119,7 +148,13 @@ def load_evidence_manifest(
         required.setdefault(event_id, {}).setdefault(fact, []).append(evidence_id)
 
     return EvidenceIngestionBundle(
-        tuple(records),
-        tuple(fact_links),
-        {event: {fact: tuple(ids) for fact, ids in facts.items()} for event, facts in required.items()},
+        evidence_records=tuple(records),
+        fact_links=tuple(fact_links),
+        required_fact_evidence={
+            event: {fact: tuple(ids) for fact, ids in facts.items()}
+            for event, facts in required.items()
+        },
+        document_types=document_types,
+        source_record_ids=source_ids,
+        material_attachment_names=attachment_names,
     )
