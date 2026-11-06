@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import date, datetime, timedelta, UTC
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +26,6 @@ from nse_swing_bot.market_data.quarantine import DataQualityQuarantine
 from nse_swing_bot.market_data.request_control import KiteRequestExecutor
 from nse_swing_bot.market_data.trading_calendar import NSETradingCalendar
 from nse_swing_bot.market_data.validation import CandleDataError, validate_daily_candles
-
 
 DEFAULT_SPECIAL_SESSIONS = {
     date(2026, 2, 1): "https://nsearchives.nseindia.com/content/circulars/CMTR72349.pdf",
