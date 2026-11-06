@@ -24,7 +24,7 @@ def valid_payload() -> dict[str, object]:
         "read_only": True,
         "orders_endpoint_calls": 0,
         "production_eligible": False,
-        "adjustment_status": "unverified",
+        "adjustment_status": "provider_adjusted_unreconciled",
         "symbols": [
             {
                 "exchange": "NSE",
