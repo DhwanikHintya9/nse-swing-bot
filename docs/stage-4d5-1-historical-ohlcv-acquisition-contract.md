@@ -2,7 +2,7 @@
 
 ## Status
 
-**IN PROGRESS — MANIFEST FOUNDATION IMPLEMENTED; PILOT CLI AND RUNNER PENDING.**
+**IMPLEMENTED — MOCKED PILOT AND MANIFEST FOUNDATION; LIVE LOCAL PILOT NOT RUN.**
 
 This increment defines the acceptance contract for a read-only Kite daily-candle pilot. It does not claim that Kite data is adjusted, complete, or sufficient for the five-year study. It does not run broker orders or alter Phase 1.
 
@@ -38,6 +38,7 @@ The repository already provides the core primitives:
 - `ParquetCandleStore`: append-only raw snapshots; refuses timestamp collisions/overwrite.
 - `MarketDataService`: instrument refresh, validation, quarantine, and persistence.
 - `scripts/kite_read_only_ingest.py`: existing one-symbol smoke-test entry point.
+- `src/nse_swing_bot/market_data/pilot.py` and `scripts/kite_read_only_pilot.py`: five-symbol, read-only pilot orchestration and local CLI.
 
 The next implementation should extend these rather than create a second HTTP client, retry layer, checkpoint format, or raw store.
 
@@ -142,17 +143,20 @@ A successful recent-window pilot authorizes only a separate historical-depth pro
 
 ## Implementation progress
 
-- Added `src/nse_swing_bot/market_data/acquisition_manifest.py` with canonical JSON serialization, SHA-256 payload binding, required research-only safety fields, recursive rejection of credential-like field names, tamper verification, streaming file hashing, and atomic no-overwrite publication. The manifest now requires `provider_adjusted_unreconciled` rather than implying exchange-raw prices.
-- Added `tests/test_acquisition_manifest.py` for deterministic digests, tamper detection, safety-envelope enforcement, credential-field rejection, non-finite JSON rejection, and immutable file publication.
-- CI is running for the current feature-branch head; results have not yet been confirmed.
+- Added `src/nse_swing_bot/market_data/acquisition_manifest.py` with canonical JSON serialization, SHA-256 payload binding, required research-only safety fields, recursive rejection of credential-like field names, tamper verification, streaming file hashing, and atomic no-overwrite publication. The manifest requires `provider_adjusted_unreconciled` rather than implying exchange-raw prices.
+- Added `src/nse_swing_bot/market_data/pilot.py` and `scripts/kite_read_only_pilot.py`. The runner refreshes the current NSE/EQ Kite instrument master, binds five explicitly selected EQ symbols to source ISINs, fetches sequential daily candles through the existing adapter, records per-symbol request/retry telemetry, reports missing/unexpected sessions, writes append-only Parquet snapshots, verifies read-back, and emits a SHA-256-bound immutable manifest.
+- Mapping ambiguity fails closed and is recorded in the run manifest. Missing sessions are reported, never filled. A pilot is accepted only when all five symbols have complete expected-session coverage, no unexpected/out-of-range dates, and verified Parquet read-back.
+- Extended `KiteRequestExecutor` with detached counters for logical calls, attempts, retries, errors, and terminal failures; existing pacing and retry behavior is unchanged.
+- Added `tests/test_acquisition_manifest.py`, `tests/test_acquisition_pilot.py`, and request-telemetry coverage in `tests/test_market_data_reliability.py`. The CLI help is included in the no-credentials operational smoke tests.
+- The checked-in NSE holiday file currently covers 2026 only. A complete rolling 12-month pilot ending in November 2026 therefore requires an operator-supplied official calendar file covering the full requested dates (including special sessions); the runner fails if requested dates exceed declared calendar coverage.
+- CI on the preceding implementation head passed both push and PR workflows. Fresh checks for the latest test commit are running; no live Kite request has been made by CI or this implementation session.
 
 ## Next implementation sequence
 
-1. Extend the local CLI to accept a five-symbol input file and a supplied calendar snapshot; keep the existing one-symbol command behavior intact.
-2. Add mocked integration tests for successful multi-symbol pilot, mapping ambiguity, partial failure/resume, missing sessions, read-back mismatch, manifest tampering, and credential redaction.
-3. Run and inspect CI. Do not call Kite from CI.
-4. The operator runs the five-symbol pilot locally and shares only the generated non-secret manifest/report plus any sanitized failures.
-5. Review the pilot evidence before authorizing historical-depth probing or 500-symbol ingestion.
+1. Confirm CI on the current head.
+2. Obtain/assemble an official NSE equity session calendar covering the selected 12-month pilot window, with special sessions explicitly sourced.
+3. The operator runs the local five-symbol pilot using local Kite credentials and shares only the generated non-secret manifest/report plus sanitized failures.
+4. Review the pilot evidence before authorizing historical-depth probing or 500-symbol ingestion.
 
 ## Safety
 
