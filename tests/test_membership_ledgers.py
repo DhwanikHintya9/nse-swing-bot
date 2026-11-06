@@ -157,12 +157,22 @@ def test_identifier_validity_intervals_are_half_open(tmp_path: Path) -> None:
     identifiers, identity_events, membership_events = _paths(tmp_path)
     rows = _identifier_rows()
     rows[0]["valid_to"] = "2022-01-01"
-    rows[1]["valid_from"] = "2022-01-01"
+    next_assignment = dict(
+        rows[0],
+        security_id="SEC-2",
+        issuer_id="ISS-2",
+        valid_from="2022-01-01",
+        valid_to="",
+    )
+    rows.append(next_assignment)
+    events = _membership_event_rows()
+    events[0]["effective_date"] = "2021-12-31"
     _write(identifiers, IDENTIFIER_FIELDS, rows)
+    _write(membership_events, MEMBERSHIP_EVENT_FIELDS, events)
 
     assert _validate((identifiers, identity_events, membership_events))[
         "security_identifiers"
-    ] == 2
+    ] == 3
 
 
 def test_overlapping_identifier_assignments_are_rejected(tmp_path: Path) -> None:
@@ -329,6 +339,16 @@ def test_published_timestamp_requires_timezone(tmp_path: Path) -> None:
     _write(membership_events, MEMBERSHIP_EVENT_FIELDS, rows)
 
     with pytest.raises(module.LedgerValidationError, match="must include a UTC offset"):
+        _validate((identifiers, identity_events, membership_events))
+
+
+def test_published_timestamp_must_be_utc_not_just_offset_aware(tmp_path: Path) -> None:
+    identifiers, identity_events, membership_events = _paths(tmp_path)
+    rows = _membership_event_rows()
+    rows[0]["published_at_utc"] = "2022-01-01T15:30:00+05:30"
+    _write(membership_events, MEMBERSHIP_EVENT_FIELDS, rows)
+
+    with pytest.raises(module.LedgerValidationError, match="must be UTC"):
         _validate((identifiers, identity_events, membership_events))
 
 
