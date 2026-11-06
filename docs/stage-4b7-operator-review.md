@@ -16,7 +16,8 @@ Each review row contains:
 - source_identity_verified and original_document_confirmed boolean assertions.
 - Positive page_count.
 - attachment_inventory and reviewed_attachments arrays. The inventory must exactly match the named attachments in the provenance manifest; reviewed attachments must be a subset.
-- fact_reviews, containing fact_name, positive one-based page_number, and exact_excerpt.
+- fact_reviews, containing fact_name, positive one-based page_number, and exact_excerpt. Optional attachment_name identifies the inventoried annexure when the fact appears outside the main filing.
+- attachment_page_counts, an object mapping any annexure cited by a fact review to its positive page count. Main-document facts use page_count.
 
 ## Acceptance rules
 
@@ -25,9 +26,9 @@ A review row with accepted status is accepted only when:
 1. Event, source-record ID, URL, document type and SHA-256 match the verified capture.
 2. The provenance document is P1, its own review status is accepted, and it records the original document and direct review.
 3. The reviewer confirms source identity and the original document.
-4. The page count is positive and every referenced fact page is within the document.
+4. The main-document page count is positive; each annexure-scoped fact names an inventoried attachment with a positive attachment page count, and every referenced page is within its respective document.
 5. The attachment inventory exactly matches the provenance inventory, and every inventoried attachment is marked reviewed.
-6. The reviewed fact/page/excerpt tuples exactly match the provenance fact links for that evidence document.
+6. The reviewed fact/page/excerpt/attachment tuples exactly match the provenance fact links for that evidence document.
 
 A pending, rejected or conflicted review is retained as a review record but is not included in accepted_evidence_ids. Missing P1 review rows, invalid lineage, incomplete attachment review, or fact excerpt drift fail closed. P2-P5 evidence cannot be promoted through this loader.
 
@@ -53,11 +54,13 @@ A pending, rejected or conflicted review is retained as a review record but is n
       "page_count": 3,
       "attachment_inventory": ["annexure-a.pdf"],
       "reviewed_attachments": ["annexure-a.pdf"],
+      "attachment_page_counts": {"annexure-a.pdf": 4},
       "fact_reviews": [
         {
           "fact_name": "appointment_term",
           "page_number": 2,
-          "exact_excerpt": "Exact clause transcribed from the reviewed page."
+          "exact_excerpt": "Exact clause transcribed from the reviewed page.",
+          "attachment_name": "annexure-a.pdf"
         }
       ]
     }
@@ -103,3 +106,9 @@ admission = evaluate_reviewed_event_evidence(canonical_event, reviewed)
 ~~~
 
 This bridge does not modify source data, set legacy statuses, create canonical events, score signals, or authorize trades. No command-line wrapper or automatic promotion is provided in this stage.
+
+
+
+## Annexure-level fact references (Stage 4B-8)
+
+When a policy fact is supported by an annexure rather than the main filing, set attachment_name on both the provenance fact link and the operator fact review. The attachment must appear in the declared inventory and be marked reviewed. Supply its positive page count in attachment_page_counts; the loader checks the excerpt page against that annexure's page count, not the main PDF's page count. Facts without attachment_name continue to refer to the main source document.
