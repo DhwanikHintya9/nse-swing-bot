@@ -61,9 +61,10 @@ def test_zip_inventory_rejects_unsafe_member_paths(tmp_path, member_name):
 
 def test_zip_inventory_rejects_duplicate_member_names(tmp_path):
     source = tmp_path / "duplicate.zip"
-    with zipfile.ZipFile(source, "w") as package:
-        package.writestr("same.pdf", b"first")
-        package.writestr("same.pdf", b"second")
+    with pytest.warns(UserWarning, match="Duplicate name"):
+        with zipfile.ZipFile(source, "w") as package:
+            package.writestr("same.pdf", b"first")
+            package.writestr("same.pdf", b"second")
     captured = capture_source_bytes(
         source,
         tmp_path / "archive",
@@ -160,4 +161,15 @@ def test_zip_inventory_rejects_nonpositive_limits(tmp_path):
     with pytest.raises(ValueError, match="max_members"):
         inspect_captured_zip_package(
             captured.manifest_path, tmp_path / "inventory.json", max_members=0
+        )
+
+
+
+def test_zip_inventory_enforces_compression_ratio_limit(tmp_path):
+    captured = _capture_zip(tmp_path, [("compressed.txt", b"A" * 20_000)])
+    with pytest.raises(ValueError, match="compression ratio"):
+        inspect_captured_zip_package(
+            captured.manifest_path,
+            tmp_path / "inventory.json",
+            max_compression_ratio=2,
         )
