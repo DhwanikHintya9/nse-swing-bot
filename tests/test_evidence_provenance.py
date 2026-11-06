@@ -253,3 +253,22 @@ def test_verified_manifest_rejects_unknown_capture_evidence_id(tmp_path):
         load_verified_evidence_manifest(
             path, {"DABUR-CEO": "src-1"}, {"not-an-evidence-id": tmp_path / "missing.json"}
         )
+
+
+
+def test_fact_link_can_name_a_declared_material_attachment(tmp_path):
+    bundle = _load(
+        tmp_path,
+        [_document()],
+        [_link(attachment_name="annexure-a.pdf")],
+    )
+    assert bundle.fact_links[0].attachment_name == "annexure-a.pdf"
+
+
+def test_fact_link_cannot_name_an_unknown_attachment(tmp_path):
+    with pytest.raises(ValueError, match="unknown fact attachment"):
+        _load(
+            tmp_path,
+            [_document()],
+            [_link(attachment_name="annexure-b.pdf")],
+        )
