@@ -140,7 +140,7 @@ def test_tampered_normalized_snapshot_is_rejected(tmp_path: Path) -> None:
     manifest_path = _ingest(source, snapshot_dir, date(2024, 9, 30))
     second_source = _write_snapshot(tmp_path / "second.csv", _rows("T", 600, 500))
     _ingest(second_source, snapshot_dir, date(2025, 3, 31))
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = loads(manifest_path.read_text(encoding="utf-8"))
     normalized = manifest_path.parent / manifest["normalized_filename"]
     normalized.write_text(normalized.read_text(encoding="utf-8") + "tampered\n", encoding="utf-8")
 
