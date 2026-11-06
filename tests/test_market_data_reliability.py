@@ -356,3 +356,39 @@ def test_retry_after_accepts_http_date() -> None:
     assert no_wait_executor(sleeps).call("historical", operation) == "ok"
     assert calls[0] == 2
     assert 0 <= sleeps[0] <= 8
+
+
+def test_service_returns_validated_frame_matching_parquet_readback(tmp_path) -> None:
+    class FakeAdapter:
+        def fetch_daily_candles(
+            self, instrument_token, start, end, chunk_days=365, expected_sessions=None
+        ):
+            return pd.DataFrame(
+                {
+                    "open": [10.0, 11.0],
+                    "high": [12.0, 13.0],
+                    "low": [9.0, 10.0],
+                    "close": [11.0, 12.0],
+                    "volume": [100.0, 120.0],
+                },
+                index=pd.to_datetime(["2026-11-02", "2026-11-04"]),
+            )
+
+    store = ParquetCandleStore(tmp_path / "parquet")
+    service = MarketDataService(FakeAdapter(), store, tmp_path / "snapshots")
+    instrument = pd.Series(
+        {"exchange": "NSE", "tradingsymbol": "RELIANCE", "instrument_token": 123}
+    )
+    paths, fetched = service.sync_daily_history_with_data(
+        instrument, date(2026, 11, 2), date(2026, 11, 4)
+    )
+    persisted = store.read_latest(
+        "NSE:RELIANCE", "2026-11-02", "2026-11-04"
+    )
+
+    assert len(paths) == 1
+    assert paths[0].exists()
+    pd.testing.assert_frame_equal(
+        persisted, fetched, check_dtype=False, check_freq=False, check_exact=False,
+        rtol=1e-10, atol=1e-10,
+    )
