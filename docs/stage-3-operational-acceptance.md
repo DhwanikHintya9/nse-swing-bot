@@ -48,6 +48,18 @@ python scripts/refresh_nifty500.py --effective-date 2026-09-30 --output-dir data
 
 The downloader uses the official NSE endpoint, browser-compatible headers, a 60-second timeout, and bounded transient retries. It writes an immutable normalized snapshot under `data/universe/`; an existing dated snapshot is never overwritten. Do not overwrite the already reconciled dated snapshot.
 
+## Importing an official NSE announcements CSV export
+
+Download the equity announcements CSV from the NSE [Corporate Filings — Announcements](https://www.nseindia.com/companies-listing/corporate-filings-announcements) page using the selected date range. Keep the original download unchanged under the Git-ignored `data/corporate_events/raw/` directory. Then normalize it against the archived universe:
+
+```cmd
+python scripts/import_nse_announcement_export.py --input data/corporate_events/raw/nse-announcements.csv --universe data/universe/source/nse-nifty500-captured-2026-11-05.csv --output data/corporate_events/nse-announcements-review.csv --excluded-output data/corporate_events/nse-announcements-excluded.csv
+```
+
+The adapter supports the NSE export columns `SYMBOL`, `COMPANY NAME`, `SUBJECT`, `DETAILS`, `BROADCAST DATE/TIME`, and optional `ATTACHMENT`, `XBRL`, and submission type. It filters rows to the selected universe, retains excluded/blank-symbol rows in a separate audit file, deduplicates identical records, and retains the broadcast timestamp exactly as supplied.
+
+**Important:** broadcast timestamp is not the underlying event date. The adapter intentionally leaves `event_type`, `event_date`, and per-announcement URL blank for review; the listing page URL is provenance for the export, not a fabricated direct filing URL. Reviewers must inspect the actual filing/attachment and add independent corroboration before translating a candidate into the verified event schema. This export alone cannot establish complete negative coverage for a symbol or date range.
+
 ## Candidate intake and review queue (unverified staging)
 
 The first automated preparation step is available as `scripts/prepare_corporate_event_review.py`. It accepts one or more **operator-acquired** announcement CSV exports with these columns:
