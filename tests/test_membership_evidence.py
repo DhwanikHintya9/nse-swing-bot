@@ -142,6 +142,53 @@ def test_duplicate_isin_is_rejected(tmp_path: pathlib.Path) -> None:
         _ingest(source, tmp_path / "snapshots", datetime.date(2024, 9, 30))
 
 
+
+def test_exact_dummy_heg_placeholder_is_preserved_but_not_reconciled(
+    tmp_path: pathlib.Path,
+) -> None:
+    rows = _rows("S", 0, 499) + [("DUMMYHEG", "DUM545A01024")]
+    source = _write_snapshot(tmp_path / "source.csv", rows)
+    manifest_path = _ingest(source, tmp_path / "snapshots", datetime.date(2026, 9, 30))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    normalized = pd.read_csv(manifest_path.parent / manifest["normalized_filename"])
+    placeholder = normalized.loc[normalized["symbol"] == "DUMMYHEG"].iloc[0]
+
+    assert manifest["row_count"] == 500
+    assert manifest["reconciliation_eligible_row_count"] == 499
+    assert manifest["unresolved_identity_rows"][0]["symbol"] == "DUMMYHEG"
+    assert manifest["unresolved_identity_rows"][0]["isin"] == "DUM545A01024"
+    assert placeholder["identity_status"] == "source_placeholder_unresolved"
+
+
+def test_unrecognized_non_ine_identifier_is_rejected(tmp_path: pathlib.Path) -> None:
+    rows = _rows("S", 0, 499) + [("NOTDUMMY", "DUM545A01024")]
+    source = _write_snapshot(tmp_path / "source.csv", rows)
+    with pytest.raises(
+        membership_evidence.MembershipEvidenceError,
+        match="unrecognized source placeholder",
+    ):
+        _ingest(source, tmp_path / "snapshots", datetime.date(2026, 9, 30))
+
+
+def test_placeholder_is_excluded_from_isin_reconciliation(tmp_path: pathlib.Path) -> None:
+    snapshot_dir = tmp_path / "snapshots"
+    rows = _rows("S", 0, 499) + [("DUMMYHEG", "DUM545A01024")]
+    first = _write_snapshot(tmp_path / "first.csv", rows)
+    second = _write_snapshot(tmp_path / "second.csv", rows)
+    _ingest(first, snapshot_dir, datetime.date(2025, 9, 30))
+    _ingest(second, snapshot_dir, datetime.date(2026, 3, 31))
+
+    report = membership_evidence.reconcile_membership_snapshots(
+        snapshot_dir, tmp_path / "diff.csv"
+    )
+    changes = pd.read_csv(tmp_path / "diff.csv")
+
+    assert report["total_observed_changes"] == 0
+    assert report["intervals"][0]["previous_unresolved_identity_count"] == 1
+    assert report["intervals"][0]["next_unresolved_identity_count"] == 1
+    assert changes.empty
+
+
 def test_tampered_normalized_snapshot_is_rejected(tmp_path: pathlib.Path) -> None:
     source = _write_snapshot(tmp_path / "source.csv", _rows("S", 0, 500))
     snapshot_dir = tmp_path / "snapshots"
