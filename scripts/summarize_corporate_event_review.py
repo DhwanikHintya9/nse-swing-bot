@@ -5,7 +5,6 @@ export only. It is never treated as having complete or negative event coverage.
 """
 import argparse
 import csv
-from collections import Counter
 from pathlib import Path
 
 
@@ -38,9 +37,9 @@ def _read_symbols(path: Path) -> list[str]:
 def summarize_review_inbox(universe_path: Path, review_path: Path) -> str:
     symbols = _read_symbols(universe_path)
     universe = set(symbols)
-    per_symbol: Counter[str] = Counter()
-    priorities: Counter[str] = Counter()
-    statuses: Counter[str] = Counter()
+    per_symbol: dict[str, int] = {}
+    priorities: dict[str, int] = {}
+    statuses: dict[str, int] = {}
     total = 0
 
     with review_path.open(encoding="utf-8-sig", newline="") as handle:
@@ -67,9 +66,9 @@ def summarize_review_inbox(universe_path: Path, review_path: Path) -> str:
                     f"review CSV row {line_number}: review_status is required"
                 )
             total += 1
-            per_symbol[symbol] += 1
-            priorities[priority] += 1
-            statuses[status] += 1
+            per_symbol[symbol] = per_symbol.get(symbol, 0) + 1
+            priorities[priority] = priorities.get(priority, 0) + 1
+            statuses[status] = statuses.get(status, 0) + 1
 
     represented = sorted(per_symbol)
     no_candidates = [symbol for symbol in symbols if symbol not in per_symbol]
