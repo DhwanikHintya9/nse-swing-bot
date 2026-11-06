@@ -23,6 +23,7 @@ from nse_swing_bot.market_data.instruments import (
 from nse_swing_bot.market_data.kite_adapter import KiteMarketDataAdapter
 from nse_swing_bot.market_data.parquet_store import ParquetCandleStore
 from nse_swing_bot.market_data.quarantine import DataQualityQuarantine
+from nse_swing_bot.market_data.request_control import KiteRequestExecutor
 from nse_swing_bot.market_data.trading_calendar import NSETradingCalendar
 from nse_swing_bot.market_data.validation import CandleDataError, validate_daily_candles
 
@@ -75,6 +76,20 @@ def _resolve_pilot_instruments(
             }
         )
     return resolved
+
+
+def _stats_delta(
+    before: dict[str, dict[str, int]],
+    after: dict[str, dict[str, int]],
+) -> dict[str, dict[str, int]]:
+    """Return non-negative per-endpoint request-counter deltas."""
+    delta: dict[str, dict[str, int]] = {}
+    for endpoint, counters in after.items():
+        previous = before.get(endpoint, {})
+        delta[endpoint] = {
+            key: value - previous.get(key, 0) for key, value in counters.items()
+        }
+    return delta
 
 
 def _coverage_summary(
@@ -145,14 +160,17 @@ def run_kite_daily_pilot(
     if expected_sessions.empty:
         raise ValueError("calendar produced no expected sessions for the requested range")
 
+    request_executor = KiteRequestExecutor()
     adapter = KiteMarketDataAdapter(
         client,
+        request_executor=request_executor,
         checkpoint_store=JsonChunkCheckpointStore(data_root / "checkpoints"),
     )
     raw_instruments = adapter.fetch_nse_instruments()
     instruments = normalize_instrument_master(raw_instruments)
     instrument_snapshot = save_instrument_snapshot(instruments, data_root / "snapshots")
     instrument_snapshot_sha256 = sha256_file(instrument_snapshot)
+    instrument_master_request_stats = request_executor.snapshot_stats()
 
     mapping_error: str | None = None
     try:
@@ -182,6 +200,7 @@ def run_kite_daily_pilot(
             )
 
     for item in selected:
+        request_stats_before = request_executor.snapshot_stats()
         symbol = item["symbol"]
         instrument = pd.Series(item["instrument"])
         result: dict[str, Any] = {
@@ -256,6 +275,9 @@ def run_kite_daily_pilot(
                 if isinstance(error, (ValueError, AssertionError))
                 else "acquisition_or_persistence"
             )
+        result["request_stats"] = _stats_delta(
+            request_stats_before, request_executor.snapshot_stats()
+        )
         symbol_results.append(result)
 
     completed = datetime.now(UTC)
@@ -303,6 +325,7 @@ def run_kite_daily_pilot(
                 for day, source in sorted((special_sessions or {}).items())
             },
         },
+        "instrument_master_request_stats": instrument_master_request_stats,
         "instrument_master": {
             "path": str(instrument_snapshot.relative_to(data_root)),
             "sha256": instrument_snapshot_sha256,
