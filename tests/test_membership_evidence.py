@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import csv
-from datetime import date
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
