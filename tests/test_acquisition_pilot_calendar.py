@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 from nse_swing_bot.market_data.trading_calendar import NSETradingCalendar
+from scripts.kite_read_only_pilot import DEFAULT_SPECIAL_SESSIONS
 
 
 def test_archived_official_calendar_covers_default_pilot_window() -> None:
@@ -53,3 +54,23 @@ def test_muhurat_session_is_only_added_back_when_explicitly_sourced() -> None:
     assert pd.Timestamp("2025-10-21") not in closed
     assert pd.Timestamp("2025-10-21") in with_muhurat
     assert pd.Timestamp("2025-10-22") not in with_muhurat
+
+
+def test_default_pilot_includes_official_budget_sunday_session() -> None:
+    repository_root = Path(__file__).resolve().parents[1]
+    calendar_path = (
+        repository_root / "data/market_calendar/nse-equity-holidays-2025-2026.csv"
+    )
+    calendar = NSETradingCalendar.from_csv(
+        calendar_path,
+        source="NSE 2025 Capital Market circular and 2026 equity holiday page",
+        coverage_start=date(2025, 1, 1),
+        coverage_end=date(2026, 12, 31),
+        special_sessions=DEFAULT_SPECIAL_SESSIONS,
+    )
+
+    sessions = calendar.sessions(date(2026, 1, 30), date(2026, 2, 2))
+
+    assert DEFAULT_SPECIAL_SESSIONS[date(2026, 2, 1)].endswith("CMTR72349.pdf")
+    assert pd.Timestamp("2026-02-01") in sessions
+    assert pd.Timestamp("2026-01-31") not in sessions
