@@ -14,6 +14,9 @@ from nse_swing_bot.market_data.pilot import run_kite_daily_pilot
 
 DEFAULT_SYMBOLS = "RELIANCE,HDFCBANK,INFY,SUNPHARMA,LT"
 UNIVERSE_SOURCE = "https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv"
+DEFAULT_SPECIAL_SESSIONS = {
+    date(2026, 2, 1): "https://nsearchives.nseindia.com/content/circulars/CMTR72349.pdf",
+}
 
 
 def _special_session(value: str) -> tuple[date, str]:
@@ -107,6 +110,8 @@ def main() -> int:
         parser.error("--symbols must contain exactly five unique, non-empty symbols")
     if len(dict(args.special_session)) != len(args.special_session):
         parser.error("--special-session cannot contain duplicate dates")
+    special_sessions = dict(DEFAULT_SPECIAL_SESSIONS)
+    special_sessions.update(dict(args.special_session))
 
     api_key = file_env.get("KITE_API_KEY") or os.environ.get("KITE_API_KEY")
     access_token = file_env.get("KITE_ACCESS_TOKEN") or os.environ.get("KITE_ACCESS_TOKEN")
@@ -149,7 +154,7 @@ def main() -> int:
         symbols=symbols,
         data_root=data_root,
         chunk_days=args.chunk_days,
-        special_sessions=dict(args.special_session),
+        special_sessions=special_sessions,
     )
 
     print(f"Pilot status: {manifest['pilot_status']}")
