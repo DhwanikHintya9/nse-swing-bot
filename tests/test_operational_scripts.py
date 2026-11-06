@@ -11,6 +11,7 @@ import pytest
         "create_event_coverage_template.py",
         "import_corporate_events.py",
         "kite_read_only_smoke.py",
+        "kite_read_only_pilot.py",
         "refresh_nifty500.py",
     ],
 )
