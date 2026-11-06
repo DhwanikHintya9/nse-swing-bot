@@ -1,14 +1,12 @@
 """Cross-check PDF inspection and exact-excerpt artifacts against evidence provenance."""
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from nse_swing_bot.events.capture_verification import verify_capture_manifest
 from nse_swing_bot.events.pdf_inspection import verify_exact_pdf_excerpt
 from nse_swing_bot.events.provenance import VerifiedEvidenceIngestion
 
@@ -109,8 +107,12 @@ def verify_pdf_artifact_bundle(
             if attachment_name not in ingestion.bundle.material_attachment_names[evidence_id]:
                 raise ValueError(f"unknown attachment in excerpt binding: {attachment_name}")
             attachment_names.add(attachment_name)
-        inspection_path = (binding_path.parent / str(binding.get("inspection_manifest", ""))).resolve()
-        excerpt_path = (binding_path.parent / str(binding.get("excerpt_manifest", ""))).resolve()
+        inspection_path = (
+            binding_path.parent / str(binding.get("inspection_manifest", ""))
+        ).resolve()
+        excerpt_path = (
+            binding_path.parent / str(binding.get("excerpt_manifest", ""))
+        ).resolve()
         if inspection_path != inspection_manifest_path.resolve():
             raise ValueError("excerpt binding points to a different inspection manifest")
         excerpt = _read_object(excerpt_path, "PDF excerpt verification manifest")
@@ -136,7 +138,9 @@ def verify_pdf_artifact_bundle(
             raise ValueError(f"excerpt page text digest differs from inspection for {evidence_id}")
         expected_fact = (binding.get("fact_name"), page, exact, attachment_name)
         if expected_fact not in known_facts:
-            raise ValueError(f"excerpt binding does not match a provenance fact link: {expected_fact}")
+            raise ValueError(
+                f"excerpt binding does not match a provenance fact link: {expected_fact}"
+            )
         if expected_fact in seen_facts:
             raise ValueError(f"duplicate excerpt binding: {expected_fact}")
         seen_facts.add(expected_fact)
