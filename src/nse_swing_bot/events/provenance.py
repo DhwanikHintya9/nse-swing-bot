@@ -99,7 +99,7 @@ def load_evidence_manifest(
         if not set(reviewed_names).issubset(names):
             raise ValueError(f"reviewed attachment not declared for {evidence_id}")
         all_reviewed = bool(names) and set(names) == set(reviewed_names)
-        if required_attachments and (not names or not all_reviewed):
+        if required_attachments and names and not all_reviewed:
             raise ValueError(f"material attachments are not fully reviewed for {evidence_id}")
 
         record = EvidenceRecord(
