@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from nse_swing_bot.market_data.pilot import DEFAULT_SPECIAL_SESSIONS
 from nse_swing_bot.market_data.trading_calendar import NSETradingCalendar
-from scripts.kite_read_only_pilot import DEFAULT_SPECIAL_SESSIONS
 
 
 def test_archived_official_calendar_covers_default_pilot_window() -> None:
