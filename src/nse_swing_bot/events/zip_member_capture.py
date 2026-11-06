@@ -69,7 +69,11 @@ def materialize_verified_zip_member(
     entries = inventory.get("members")
     if not isinstance(entries, list):
         raise ValueError("ZIP inventory members must be an array")
-    matches = [entry for entry in entries if isinstance(entry, dict) and entry.get("name") == member_name]
+    matches = [
+        entry
+        for entry in entries
+        if isinstance(entry, dict) and entry.get("name") == member_name
+    ]
     if len(matches) != 1:
         raise ValueError("member must match exactly one inventory entry")
     entry = matches[0]
@@ -83,7 +87,11 @@ def materialize_verified_zip_member(
     temporary: Path | None = None
     try:
         with zipfile.ZipFile(parent.archive_path, "r") as package:
-            infos = [info for info in package.infolist() if info.filename == member_name and not info.is_dir()]
+            infos = [
+                info
+                for info in package.infolist()
+                if info.filename == member_name and not info.is_dir()
+            ]
             if len(infos) != 1:
                 raise ValueError("ZIP member is missing or duplicated in parent archive")
             info = infos[0]
@@ -91,10 +99,16 @@ def materialize_verified_zip_member(
                 raise ValueError("encrypted ZIP member is not supported")
             if stat.S_ISLNK((info.external_attr >> 16) & 0xFFFF):
                 raise ValueError("symlink ZIP member is not supported")
-            if info.file_size != entry.get("byte_length") or f"{info.CRC:08x}" != entry.get("crc32"):
+            inventory_metadata_matches = (
+                info.file_size == entry.get("byte_length")
+                and f"{info.CRC:08x}" == entry.get("crc32")
+            )
+            if not inventory_metadata_matches:
                 raise ValueError("ZIP member size or CRC does not match inventory")
             with package.open(info, "r") as source:
-                with tempfile.NamedTemporaryFile(mode="wb", dir=output_root, prefix=".zip-member-", delete=False) as target:
+                with tempfile.NamedTemporaryFile(
+                    mode="wb", dir=output_root, prefix=".zip-member-", delete=False
+                ) as target:
                     temporary = Path(target.name)
                     length, digest = _hash_stream(source, target)
                     target.flush()
@@ -106,7 +120,9 @@ def materialize_verified_zip_member(
         try:
             os.link(temporary, destination)
         except FileExistsError:
-            raise FileExistsError(f"refusing to overwrite ZIP member capture: {destination}") from None
+            raise FileExistsError(
+                f"refusing to overwrite ZIP member capture: {destination}"
+            ) from None
         finally:
             temporary.unlink(missing_ok=True)
             temporary = None
@@ -128,7 +144,9 @@ def materialize_verified_zip_member(
             "member_crc32": f"{info.CRC:08x}",
         }
         data = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
-        with tempfile.NamedTemporaryFile(mode="wb", dir=output_root, prefix=".member-manifest-", delete=False) as stream:
+        with tempfile.NamedTemporaryFile(
+            mode="wb", dir=output_root, prefix=".member-manifest-", delete=False
+        ) as stream:
             manifest_temp = Path(stream.name)
             stream.write(data)
             stream.flush()
@@ -136,7 +154,9 @@ def materialize_verified_zip_member(
         try:
             os.link(manifest_temp, manifest_path)
         except FileExistsError:
-            raise FileExistsError(f"refusing to overwrite ZIP member manifest: {manifest_path}") from None
+            raise FileExistsError(
+                f"refusing to overwrite ZIP member manifest: {manifest_path}"
+            ) from None
         finally:
             manifest_temp.unlink(missing_ok=True)
         return manifest_path
