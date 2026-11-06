@@ -46,6 +46,9 @@ def test_nse_export_is_filtered_and_staged_without_guessing_event_date(tmp_path)
     assert rows[0]["event_date"] == ""
     assert rows[0]["announcement_url"] == ""
     assert rows[0]["broadcast_date_time_raw"] == "05-Nov-2026 18:10:00"
+    assert rows[0]["review_priority"] == "high"
+    assert rows[0]["priority_reason"] == "board_decision"
+    assert rows[0]["review_status"] == "pending"
     with excluded.open(newline="", encoding="utf-8") as handle:
         rejects = list(csv.DictReader(handle))
     assert {row["reason"] for row in rejects} == {
@@ -72,3 +75,22 @@ def test_export_rejects_unknown_schema(tmp_path):
     _write(source, ["SYMBOL", "SUBJECT"], [["RELIANCE", "Board Meeting"]])
     with pytest.raises(ValueError, match="missing columns"):
         module._column_map(["SYMBOL", "SUBJECT"])
+
+
+
+@pytest.mark.parametrize(
+    "subject,expected_priority,expected_reason",
+    [
+        ("Dividend", "high", "capital_action"),
+        ("Acquisition of business", "high", "transaction"),
+        ("Change in Management", "high", "management_change"),
+        ("Credit Rating", "high", "credit_or_distress"),
+        ("Investor Presentation", "medium", "investor_communication"),
+        ("Copy of Newspaper Publication", "medium", "unclassified_manual_triage"),
+    ],
+)
+def test_review_priority_is_conservative_and_never_verifies(
+    subject, expected_priority, expected_reason
+):
+    priority, reason = module.classify_review_priority(subject)
+    assert (priority, reason) == (expected_priority, expected_reason)
