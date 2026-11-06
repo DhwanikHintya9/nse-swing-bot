@@ -169,6 +169,8 @@ def test_five_symbol_pilot_writes_verified_manifest_and_parquet(tmp_path: Path) 
     assert all(item["status"] == "accepted" for item in manifest["symbols"])
     assert all(item["readback_verified"] for item in manifest["symbols"])
     assert all(item["row_count"] == 3 for item in manifest["symbols"])
+    assert all(item["request_stats"]["historical"]["calls"] == 1 for item in manifest["symbols"])
+    assert manifest["instrument_master_request_stats"]["other"]["calls"] == 1
     assert client.instrument_calls == 1
     assert len(client.history_calls) == 5
     assert len(list((data_root / "parquet").rglob("snapshot=*.parquet"))) == 5
