@@ -33,6 +33,32 @@ OUTPUT_FIELDS = (
 )
 
 
+HIGH_PRIORITY_RULES = {
+    "earnings_results": ("financial results", "audited results", "unaudited results", "quarterly results", "annual results"),
+    "board_decision": ("outcome of board meeting", "board meeting outcome"),
+    "capital_action": ("dividend", "record date", "bonus", "stock split", "sub-division", "rights issue", "buyback", "preferential issue", "qip", "delisting"),
+    "transaction": ("acquisition", "merger", "amalgamation", "scheme of arrangement", "demerger", "open offer", "sale of undertaking"),
+    "management_change": ("change in management", "appointment", "resignation", "change in director", "cessation of director", "key managerial"),
+    "credit_or_distress": ("credit rating", "default", "insolvency", "resolution plan", "downgrade"),
+}
+MEDIUM_PRIORITY_RULES = {
+    "investor_communication": ("analysts/institutional investor", "investor presentation", "investor meet", "earnings call", "conference call"),
+    "general_disclosure": ("general updates", "updates", "press release", "shareholders meeting", "monitoring agency report"),
+}
+
+
+def classify_review_priority(subject: str, details: str = "") -> tuple[str, str]:
+    """Prioritize human review only; never infer verified event type or coverage."""
+    text = f"{subject} {details}".casefold()
+    for reason, phrases in HIGH_PRIORITY_RULES.items():
+        if any(phrase in text for phrase in phrases):
+            return "high", reason
+    for reason, phrases in MEDIUM_PRIORITY_RULES.items():
+        if any(phrase in text for phrase in phrases):
+            return "medium", reason
+    return "medium", "unclassified_manual_triage"
+
+
 def _column_map(fieldnames: list[str] | None) -> dict[str, str]:
     actual = fieldnames or []
     normalized = {name.strip().lower(): name for name in actual}
@@ -81,6 +107,8 @@ def normalize_export(
         columns = _column_map(reader.fieldnames)
         for line_number, raw in enumerate(reader, start=2):
             symbol = (raw.get(columns["symbol"]) or "").strip().upper()
+            if symbol in {"-", "—", "–"}:
+                symbol = ""
             if not symbol:
                 excluded.append({
                     "source_file": source.name,
@@ -125,6 +153,12 @@ def normalize_export(
                 "announcement_url": "",
                 "secondary_source_url": "",
                 "review_notes": "",
+                "review_priority": classify_review_priority(
+                    row["subject"], row["details"]
+                )[0],
+                "priority_reason": classify_review_priority(
+                    row["subject"], row["details"]
+                )[1],
             })
 
     in_universe_output.parent.mkdir(parents=True, exist_ok=True)
@@ -160,7 +194,7 @@ def main() -> int:
     )
     print(f"NSE announcement candidates in universe: {included}")
     print(f"Rows excluded (blank/out-of-universe symbols): {excluded}")
-    print("Event type/date remain blank pending review; coverage remains incomplete.")
+    print("Priority is a review-order hint only; event type/date remain blank and coverage incomplete.")
     return 0
 
 
