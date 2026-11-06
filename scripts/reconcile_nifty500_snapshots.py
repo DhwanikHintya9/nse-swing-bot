@@ -14,7 +14,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Diff adjacent source-attributed Nifty 500 snapshots by ISIN. "
-            "Observed changes are bounded between snapshot dates; exact effective dates are not inferred."
+            "Observed changes are bounded between snapshot dates; "
+            "exact effective dates are not inferred."
         )
     )
     parser.add_argument(
@@ -28,7 +29,11 @@ def main() -> int:
         default=root / "data/universe/membership_reconciliation",
     )
     args = parser.parse_args()
-    snapshot_dir = args.snapshot_dir if args.snapshot_dir.is_absolute() else root / args.snapshot_dir
+    snapshot_dir = (
+        args.snapshot_dir
+        if args.snapshot_dir.is_absolute()
+        else root / args.snapshot_dir
+    )
     output_dir = args.output_dir if args.output_dir.is_absolute() else root / args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     diff_path = output_dir / "observed-membership-changes.csv"
