@@ -25,6 +25,7 @@ class ReviewedFact:
     fact_name: str
     page_number: int
     exact_excerpt: str
+    attachment_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,7 @@ class DocumentReview:
     page_count: int
     attachment_inventory: tuple[str, ...]
     reviewed_attachments: tuple[str, ...]
+    attachment_page_counts: dict[str, int]
     fact_reviews: tuple[ReviewedFact, ...]
 
 
@@ -128,10 +130,10 @@ def load_evidence_review_manifest(
         record.evidence_id: record
         for record in verified.bundle.evidence_records
     }
-    expected_fact_rows: dict[str, set[tuple[str, int, str]]] = {}
+    expected_fact_rows: dict[str, set[tuple[str, int, str, str | None]]] = {}
     for link in verified.bundle.fact_links:
         expected_fact_rows.setdefault(link.evidence_id, set()).add(
-            (link.fact_name, link.page_number, link.exact_excerpt)
+            (link.fact_name, link.page_number, link.exact_excerpt, link.attachment_name)
         )
 
     reviews: list[DocumentReview] = []
@@ -181,6 +183,16 @@ def load_evidence_review_manifest(
             raise ValueError(f"attachment inventory mismatch for {evidence_id}")
         if not set(reviewed_attachments).issubset(attachment_inventory):
             raise ValueError(f"reviewed attachment not in inventory for {evidence_id}")
+        raw_attachment_counts = item.get("attachment_page_counts", {})
+        if not isinstance(raw_attachment_counts, dict):
+            raise ValueError(f"attachment_page_counts must be an object for {evidence_id}")
+        attachment_page_counts: dict[str, int] = {}
+        for name, count in raw_attachment_counts.items():
+            if not isinstance(name, str) or name not in attachment_inventory:
+                raise ValueError(f"attachment page count references unknown attachment for {evidence_id}")
+            if not isinstance(count, int) or isinstance(count, bool) or count < 1:
+                raise ValueError(f"attachment page count must be positive for {evidence_id}")
+            attachment_page_counts[name] = count
 
         raw_facts = item.get("fact_reviews")
         if not isinstance(raw_facts, list):
@@ -189,22 +201,43 @@ def load_evidence_review_manifest(
         for fact in raw_facts:
             if not isinstance(fact, dict):
                 raise ValueError(f"each fact review must be an object for {evidence_id}")
+            attachment_name = fact.get("attachment_name")
+            if attachment_name is not None:
+                if not isinstance(attachment_name, str) or not attachment_name.strip():
+                    raise ValueError(f"attachment_name must be non-empty for {evidence_id}")
+                attachment_name = attachment_name.strip()
+                if attachment_name not in attachment_inventory:
+                    raise ValueError(f"fact references unknown attachment for {evidence_id}")
             facts.append(
                 ReviewedFact(
                     fact_name=_required_text(fact, "fact_name"),
                     page_number=_positive_int(fact, "page_number"),
                     exact_excerpt=_required_text(fact, "exact_excerpt"),
+                    attachment_name=attachment_name,
                 )
             )
         fact_keys = [
-            (fact.fact_name, fact.page_number, fact.exact_excerpt) for fact in facts
+            (fact.fact_name, fact.page_number, fact.exact_excerpt, fact.attachment_name)
+            for fact in facts
         ]
         if len(fact_keys) != len(set(fact_keys)):
             raise ValueError(f"duplicate fact review for {evidence_id}")
 
         page_count = _positive_int(item, "page_count")
-        if any(fact.page_number > page_count for fact in facts):
-            raise ValueError(f"fact page exceeds page_count for {evidence_id}")
+        for fact in facts:
+            if fact.attachment_name is None:
+                if fact.page_number > page_count:
+                    raise ValueError(f"fact page exceeds page_count for {evidence_id}")
+            else:
+                attachment_pages = attachment_page_counts.get(fact.attachment_name)
+                if attachment_pages is None:
+                    raise ValueError(
+                        f"missing attachment page count for {fact.attachment_name}"
+                    )
+                if fact.page_number > attachment_pages:
+                    raise ValueError(
+                        f"fact page exceeds attachment page count for {evidence_id}"
+                    )
 
         review = DocumentReview(
             evidence_id=evidence_id,
@@ -222,6 +255,7 @@ def load_evidence_review_manifest(
             page_count=page_count,
             attachment_inventory=attachment_inventory,
             reviewed_attachments=reviewed_attachments,
+            attachment_page_counts=attachment_page_counts,
             fact_reviews=tuple(facts),
         )
 
