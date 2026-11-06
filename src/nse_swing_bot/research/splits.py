@@ -101,7 +101,7 @@ def build_walk_forward_assignments(
         raise ValueError("fold_id values must be unique")
     if tuple(sorted(windows, key=lambda item: item.test_start)) != windows:
         raise ValueError("test windows must be supplied in chronological order")
-    for previous, current in zip(windows, windows[1:]):
+    for previous, current in zip(windows, windows[1:], strict=False):
         if current.test_start <= previous.test_end:
             raise ValueError("test windows must be non-overlapping")
 
