@@ -119,8 +119,10 @@ def _median_bootstrap_interval(
     seed_material = f"{random_seed}:{cohort}:{horizon}".encode("utf-8")
     seed = int.from_bytes(hashlib.sha256(seed_material).digest()[:8], "big")
     generator = np.random.default_rng(seed)
-    indices = generator.integers(0, values.size, size=(samples, values.size))
-    medians = np.median(values[indices], axis=1)
+    medians = np.empty(samples, dtype=float)
+    for sample_index in range(samples):
+        sample_indices = generator.integers(0, values.size, size=values.size)
+        medians[sample_index] = np.median(values[sample_indices])
     lower, upper = np.quantile(medians, [0.025, 0.975])
     return float(lower), float(upper)
 
@@ -183,13 +185,6 @@ def build_event_cohort_summary(
     ].isin([True, False]).all():
         raise ValueError("high-materiality feature must contain non-null booleans")
 
-    count_columns = (
-        "event_count_30d",
-        "unassessed_impact_count_30d",
-        "positive_impact_count_30d",
-        "negative_impact_count_30d",
-        "mixed_impact_count_30d",
-    )
     source_count_columns = (
         "event_count_30d",
         "unassessed_impact_count_30d",
@@ -236,9 +231,10 @@ def build_event_cohort_summary(
         raise ValueError("outcome_labels contain no rows for the requested symbol")
     if labels["horizon_sessions"].isna().any():
         raise ValueError("outcome label horizons cannot be null")
-    labels["horizon_sessions"] = pd.to_numeric(
-        labels["horizon_sessions"], errors="raise"
-    ).astype(int)
+    numeric_horizons = pd.to_numeric(labels["horizon_sessions"], errors="raise")
+    if (numeric_horizons % 1 != 0).any():
+        raise ValueError("outcome label horizons must be whole trading-session counts")
+    labels["horizon_sessions"] = numeric_horizons.astype(int)
     if (labels["horizon_sessions"] <= 0).any():
         raise ValueError("outcome label horizons must be positive")
     if not labels["label_status"].isin(["complete", "censored"]).all():
@@ -249,6 +245,8 @@ def build_event_cohort_summary(
 
     horizons = tuple(sorted(int(value) for value in labels["horizon_sessions"].unique()))
     signal_rows = research_frame.loc[research_frame["signal"]].copy()
+    if signal_rows.empty:
+        raise ValueError("research_frame must contain at least one Phase 1 signal")
     signal_keys = {
         timestamp.tz_convert("UTC").value for timestamp in signal_rows.index
     }
@@ -300,46 +298,45 @@ def build_event_cohort_summary(
             )
     observations = pd.DataFrame(observation_rows)
 
-    complete_coverage = observations["coverage_complete"]
-    cohorts: list[tuple[str, pd.Series]] = [
-        ("all_phase1_signals", pd.Series(True, index=observations.index)),
-        ("event_coverage_complete", complete_coverage),
-        ("event_coverage_incomplete_or_unavailable", ~complete_coverage),
-        (
-            "admitted_event_present_30d",
-            complete_coverage & (observations["event_count_30d"] > 0),
-        ),
-        (
-            "no_admitted_event_in_complete_30d_window",
-            complete_coverage & (observations["event_count_30d"] == 0),
-        ),
-        (
-            "high_materiality_event_present_30d",
-            complete_coverage & observations["has_high_materiality_event_30d"],
-        ),
-        (
-            "unassessed_impact_present_30d",
-            complete_coverage & (observations["unassessed_impact_count_30d"] > 0),
-        ),
-        (
-            "positive_impact_assessed_30d",
-            complete_coverage & (observations["positive_event_count_30d"] > 0),
-        ),
-        (
-            "negative_impact_assessed_30d",
-            complete_coverage & (observations["negative_event_count_30d"] > 0),
-        ),
-        (
-            "mixed_impact_assessed_30d",
-            complete_coverage & (observations["mixed_event_count_30d"] > 0),
-        ),
-    ]
-
     summaries: list[dict[str, object]] = []
     for horizon in horizons:
         horizon_rows = observations.loc[
             observations["horizon_sessions"] == horizon
         ].reset_index(drop=True)
+        complete_coverage = horizon_rows["coverage_complete"]
+        cohorts: list[tuple[str, pd.Series]] = [
+            ("all_phase1_signals", pd.Series(True, index=horizon_rows.index)),
+            ("event_coverage_complete", complete_coverage),
+            ("event_coverage_incomplete_or_unavailable", ~complete_coverage),
+            (
+                "admitted_event_present_30d",
+                complete_coverage & (horizon_rows["event_count_30d"] > 0),
+            ),
+            (
+                "no_admitted_event_in_complete_30d_window",
+                complete_coverage & (horizon_rows["event_count_30d"] == 0),
+            ),
+            (
+                "high_materiality_event_present_30d",
+                complete_coverage & horizon_rows["has_high_materiality_event_30d"],
+            ),
+            (
+                "unassessed_impact_present_30d",
+                complete_coverage & (horizon_rows["unassessed_impact_count_30d"] > 0),
+            ),
+            (
+                "positive_impact_assessed_30d",
+                complete_coverage & (horizon_rows["positive_event_count_30d"] > 0),
+            ),
+            (
+                "negative_impact_assessed_30d",
+                complete_coverage & (horizon_rows["negative_event_count_30d"] > 0),
+            ),
+            (
+                "mixed_impact_assessed_30d",
+                complete_coverage & (horizon_rows["mixed_event_count_30d"] > 0),
+            ),
+        ]
         for cohort_name, cohort_mask in cohorts:
             selected = horizon_rows.loc[cohort_mask.to_numpy()]
             complete = selected.loc[selected["label_status"] == "complete"]
