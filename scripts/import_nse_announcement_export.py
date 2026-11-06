@@ -30,6 +30,7 @@ OUTPUT_FIELDS = (
     "broadcast_date_time_raw", "attachment", "xbrl", "submission_type",
     "source_file", "source_page_url", "review_status", "event_type",
     "event_date", "announcement_url", "secondary_source_url", "review_notes",
+    "review_priority", "priority_reason",
 )
 
 
@@ -143,6 +144,9 @@ def normalize_export(
                     "subject": row["subject"],
                 })
                 continue
+            priority, priority_reason = classify_review_priority(
+                row["subject"], row["details"]
+            )
             included.setdefault(record_id, {
                 "record_id": record_id, **row,
                 "source_file": source.name,
@@ -153,12 +157,8 @@ def normalize_export(
                 "announcement_url": "",
                 "secondary_source_url": "",
                 "review_notes": "",
-                "review_priority": classify_review_priority(
-                    row["subject"], row["details"]
-                )[0],
-                "priority_reason": classify_review_priority(
-                    row["subject"], row["details"]
-                )[1],
+                "review_priority": priority,
+                "priority_reason": priority_reason,
             })
 
     in_universe_output.parent.mkdir(parents=True, exist_ok=True)
