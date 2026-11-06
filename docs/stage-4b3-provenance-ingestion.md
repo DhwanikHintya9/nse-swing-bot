@@ -63,3 +63,12 @@ The caller supplies `expected_event_sources`, mapping canonical event IDs to the
 ```
 
 The example is a schema illustration only, not evidence for any real event. Never replace placeholders with guessed hashes or paraphrased excerpts. Events without complete source bytes and review artifacts remain pending/quarantined.
+
+
+## Verified local capture binding (Stage 4B-6)
+
+Use `load_verified_evidence_manifest` for P1 provenance. It accepts the evidence manifest, the expected canonical-event-to-Stage-3C-source mapping, and a dictionary mapping each evidence ID to its local capture-manifest path.
+
+Every P1 evidence document must have a local capture manifest. The verifier recomputes archive SHA-256 and byte length, then requires exact equality for canonical event ID, Stage 3C source-record ID, source URL, document type and SHA-256. Mismatches fail closed. Unknown evidence IDs in the capture map are rejected. Non-P1 research references may remain URL-only; if a capture manifest is supplied for one, it is verified and cross-checked too.
+
+This binds a provenance assertion to specific archived bytes; it does not prove the filing is authentic, that every page/annexure has been reviewed, or that the evidence should be accepted. Operators must independently review the source and keep evidence pending until that work is complete.
