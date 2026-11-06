@@ -161,3 +161,22 @@ A successful recent-window pilot authorizes only a separate historical-depth pro
 ## Safety
 
 This stage is research-data acquisition only. It does not modify Phase 1 signals, indicators, entry/exit rules, strategy configuration, trade management, or broker routing. No live trading is enabled.
+
+
+## Local operator command
+
+The CLI defaults to the five-symbol EQ pilot `RELIANCE,HDFCBANK,INFY,SUNPHARMA,LT`, the archived 2026-09-30-effective Nifty 500 source, and the local 2026 holiday file. The calendar file in this repository covers only 2026; it is **not sufficient** for a rolling 12-month window ending in November 2026. Before running, supply an official calendar CSV that covers the full requested interval and separately document any special sessions.
+
+Example (replace the calendar path, source, and dates with the approved full-window calendar evidence):
+
+```bash
+python scripts/kite_read_only_pilot.py \
+  --calendar-csv /path/to/official-nse-equity-calendar.csv \
+  --calendar-source "NSE official equity calendar; source references recorded with the file" \
+  --calendar-coverage-start 2025-11-06 \
+  --calendar-coverage-end 2026-11-05 \
+  --from-date 2025-11-06 \
+  --to-date 2026-11-05
+```
+
+Optional `--special-session YYYY-MM-DD=SOURCE` arguments may be repeated. To use a different five-symbol EQ pilot, pass `--symbols SYMBOL1,SYMBOL2,SYMBOL3,SYMBOL4,SYMBOL5`. The command reads `KITE_API_KEY` and `KITE_ACCESS_TOKEN` from the local environment / Git-ignored `.env`; never paste them into chat or commit them. A nonzero exit code means the immutable manifest was written but the pilot failed its acceptance gate. Review that manifest and its quarantine references rather than rerunning blindly.
