@@ -204,7 +204,10 @@ def ingest_membership_snapshot(
             if row["identity_status"] != "verified_isin_syntax"
         ],
         "identity_key": "isin",
-        "identity_policy": "valid equity ISINs only; recognized source placeholders are retained but excluded from ISIN reconciliation",
+        "identity_policy": (
+            "valid equity ISINs only; recognized source placeholders are retained "
+            "but excluded from ISIN reconciliation"
+        ),
         "membership_semantics": "snapshot_observation_not_effective_interval",
         "effective_date_claimed": False,
         "third_party_data_used_as_anchor": False,
