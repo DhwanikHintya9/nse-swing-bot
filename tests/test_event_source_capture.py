@@ -74,3 +74,13 @@ def test_capture_requires_timezone_aware_capture_time(tmp_path):
     source.write_bytes(b"original")
     with pytest.raises(ValueError, match="timezone-aware"):
         _capture(source, tmp_path / "archive", captured_at=datetime(2026, 11, 6, 12, 0))
+
+
+def test_capture_rejects_empty_source_file(tmp_path):
+    source = tmp_path / "empty.pdf"
+    source.write_bytes(b"")
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        _capture(source, tmp_path / "archive")
+
+    assert not list((tmp_path / "archive").glob(".capture-*"))
