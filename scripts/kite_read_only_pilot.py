@@ -60,7 +60,11 @@ def main() -> int:
     parser.add_argument("--calendar-coverage-end", type=date.fromisoformat, required=True)
     parser.add_argument("--from-date", type=date.fromisoformat, required=True)
     parser.add_argument("--to-date", type=date.fromisoformat, required=True)
-    parser.add_argument("--symbols", default=DEFAULT_SYMBOLS, help="Exactly five comma-separated EQ symbols")
+    parser.add_argument(
+        "--symbols",
+        default=DEFAULT_SYMBOLS,
+        help="Exactly five comma-separated EQ symbols",
+    )
     parser.add_argument("--chunk-days", type=int, default=365)
     parser.add_argument(
         "--special-session",
@@ -96,9 +100,19 @@ def main() -> int:
             "run scripts/kite_read_only_login.py if needed"
         )
 
-    universe_csv = args.universe_csv if args.universe_csv.is_absolute() else project_root / args.universe_csv
-    calendar_csv = args.calendar_csv if args.calendar_csv.is_absolute() else project_root / args.calendar_csv
-    data_root = args.data_dir if args.data_dir.is_absolute() else project_root / args.data_dir
+    universe_csv = (
+        args.universe_csv
+        if args.universe_csv.is_absolute()
+        else project_root / args.universe_csv
+    )
+    calendar_csv = (
+        args.calendar_csv
+        if args.calendar_csv.is_absolute()
+        else project_root / args.calendar_csv
+    )
+    data_root = (
+        args.data_dir if args.data_dir.is_absolute() else project_root / args.data_dir
+    )
     for required_path in (universe_csv, calendar_csv):
         if not required_path.is_file():
             parser.error(f"required source file does not exist: {required_path}")
