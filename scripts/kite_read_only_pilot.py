@@ -7,7 +7,7 @@ import os
 from datetime import date
 from pathlib import Path
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values, load_dotenv
 from kiteconnect import KiteConnect
 
 from nse_swing_bot.market_data.pilot import run_kite_daily_pilot
@@ -31,7 +31,11 @@ def _special_session(value: str) -> tuple[date, str]:
 
 def main() -> int:
     project_root = Path(__file__).resolve().parents[1]
-    load_dotenv(dotenv_path=project_root / ".env", override=False)
+    env_path = project_root / ".env"
+    load_dotenv(dotenv_path=env_path, override=False)
+    # The login helper writes a matched API-key/access-token pair to .env.
+    # Prefer that pair over inherited shell variables, which may be stale.
+    file_env = dotenv_values(env_path)
 
     parser = argparse.ArgumentParser(
         description=(
@@ -104,8 +108,8 @@ def main() -> int:
     if len(dict(args.special_session)) != len(args.special_session):
         parser.error("--special-session cannot contain duplicate dates")
 
-    api_key = os.environ.get("KITE_API_KEY")
-    access_token = os.environ.get("KITE_ACCESS_TOKEN")
+    api_key = file_env.get("KITE_API_KEY") or os.environ.get("KITE_API_KEY")
+    access_token = file_env.get("KITE_ACCESS_TOKEN") or os.environ.get("KITE_ACCESS_TOKEN")
     if not api_key or not access_token:
         parser.error(
             "KITE_API_KEY and KITE_ACCESS_TOKEN must be configured locally; "
