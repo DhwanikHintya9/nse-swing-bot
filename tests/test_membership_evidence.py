@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from csv import DictReader, writer
 from datetime import date
 from json import loads
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from nse_swing_bot.market_data.membership_evidence import (
@@ -19,11 +19,13 @@ CAPTURED = "2026-11-06T10:00:00Z"
 
 
 def _write_snapshot(path: Path, rows: list[tuple[str, str]]) -> Path:
-    with path.open("w", encoding="utf-8", newline="") as handle:
-        csv_writer = writer(handle, lineterminator="\n")
-        csv_writer.writerow(["Company Name", "Industry", "Symbol", "Series", "ISIN Code"])
-        for index, (symbol, isin) in enumerate(rows):
-            csv_writer.writerow([f"Company {index}", "Industry", symbol, "EQ", isin])
+    pd.DataFrame(
+        [
+            [f"Company {index}", "Industry", symbol, "EQ", isin]
+            for index, (symbol, isin) in enumerate(rows)
+        ],
+        columns=["Company Name", "Industry", "Symbol", "Series", "ISIN Code"],
+    ).to_csv(path, index=False)
     return path
 
 
@@ -85,8 +87,7 @@ def test_reconcile_reports_observed_changes_without_exact_effective_dates(
     assert report["snapshot_count"] == 2
     assert report["total_observed_changes"] == 4
     assert report["effective_dates_inferred"] is False
-    with diff_path.open(encoding="utf-8", newline="") as handle:
-        changes = list(DictReader(handle))
+    changes = pd.read_csv(diff_path).to_dict("records")
     assert sum(row["change"] == "observed_addition" for row in changes) == 2
     assert sum(row["change"] == "observed_removal" for row in changes) == 2
     assert all(row["effective_date"] == "" for row in changes)
