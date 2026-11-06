@@ -302,6 +302,19 @@ def test_superseded_event_must_exist(tmp_path: Path) -> None:
         _validate((identifiers, identity_events, membership_events))
 
 
+def test_membership_event_supersession_cycles_are_rejected(tmp_path: Path) -> None:
+    identifiers, identity_events, membership_events = _paths(tmp_path)
+    rows = _membership_event_rows()
+    first = dict(rows[0], event_id="MEM-EVENT-1", action="correction",
+                 supersedes_event_id="MEM-EVENT-2")
+    second = dict(rows[0], event_id="MEM-EVENT-2", action="revocation",
+                  supersedes_event_id="MEM-EVENT-1")
+    _write(membership_events, MEMBERSHIP_EVENT_FIELDS, [first, second])
+
+    with pytest.raises(module.LedgerValidationError, match="supersession cycle"):
+        _validate((identifiers, identity_events, membership_events))
+
+
 def test_notice_section_must_identify_nifty_500(tmp_path: Path) -> None:
     identifiers, identity_events, membership_events = _paths(tmp_path)
     rows = _membership_event_rows()
