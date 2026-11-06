@@ -28,6 +28,11 @@ from nse_swing_bot.market_data.trading_calendar import NSETradingCalendar
 from nse_swing_bot.market_data.validation import CandleDataError, validate_daily_candles
 
 
+DEFAULT_SPECIAL_SESSIONS = {
+    date(2026, 2, 1): "https://nsearchives.nseindia.com/content/circulars/CMTR72349.pdf",
+}
+
+
 def _resolve_pilot_instruments(
     universe: pd.DataFrame,
     instruments: pd.DataFrame,
