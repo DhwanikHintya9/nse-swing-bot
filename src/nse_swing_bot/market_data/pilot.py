@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -68,7 +69,7 @@ def _resolve_pilot_instruments(
                 "isin": isin,
                 "series": "EQ",
                 "instrument": instrument.to_dict(),
-                "instrument_master_row_sha256": __import__("hashlib").sha256(row_csv).hexdigest(),
+                "instrument_master_row_sha256": hashlib.sha256(row_csv).hexdigest(),
                 "universe_effective_date": str(source["effective_date"]),
                 "universe_source": str(source["source"]),
             }
