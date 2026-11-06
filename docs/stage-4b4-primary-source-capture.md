@@ -34,3 +34,24 @@ The latest Stage 3C CSVs and migration snapshot are available in the conversatio
 - The AMBUJACEM pair is explicitly flagged for duplicate review; no canonical IDs are merged automatically.
 
 This queue is a transparent handoff from Stage 3C research into reproducible evidence capture. It does not promote, score, or otherwise change any event's production eligibility.
+
+## Local byte-capture utility
+
+The CLI `scripts/capture_event_source.py` archives a source file that has already been downloaded and inspected as the expected original exchange/issuer object. It performs no network request and does not parse or review the document.
+
+Example (PowerShell or shell; supply the actual local file path and capture time):
+
+```bash
+python scripts/capture_event_source.py \
+  --input ./incoming/THANGAMAYL_original.pdf \
+  --archive-dir ./data/corporate_events/source_archive \
+  --event-id EV-THANGAMAYL-01 \
+  --source-record-id 49a714705c25dd3fff9d \
+  --source-url https://nsearchives.nseindia.com/corporate/THANGAMAYL_04112026140903_OUTCOME_OF_MEETING_COVERING_LETTER.pdf \
+  --document-type exchange_filing_pdf \
+  --captured-at 2026-11-06T13:00:00+05:30
+```
+
+The command writes the original bytes under a SHA-256-derived immutable filename and a sibling JSON capture manifest containing byte length, SHA-256, original filename, source URL, event/source-record linkage and timezone-aware capture time. Existing capture paths are never overwritten. The manifest's review state is intentionally not accepted: direct review, attachment completeness and exact fact excerpts must still be recorded separately in the Stage 4B-3 evidence manifest.
+
+For a document supporting multiple canonical events, create a separate event-linked capture record for each event while retaining the same source bytes/hash. Do not infer review acceptance from a successful byte capture.
