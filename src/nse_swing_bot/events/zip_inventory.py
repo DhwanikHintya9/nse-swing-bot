@@ -39,8 +39,14 @@ class ZipPackageInventory:
 def _safe_member_name(name: str) -> None:
     if not name or "\\" in name:
         raise ValueError(f"unsafe ZIP member path: {name!r}")
+    normalized_name = name[:-1] if name.endswith("/") else name
+    raw_parts = normalized_name.split("/")
     path = PurePosixPath(name)
-    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+    if (
+        path.is_absolute()
+        or any(part in {"", ".", ".."} for part in raw_parts)
+        or any(part in {"", ".", ".."} for part in path.parts)
+    ):
         raise ValueError(f"unsafe ZIP member path: {name!r}")
     if path.parts and ":" in path.parts[0]:
         raise ValueError(f"unsafe ZIP member path: {name!r}")
