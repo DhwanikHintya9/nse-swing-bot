@@ -233,7 +233,9 @@ def load_evidence_review_manifest(
             if set(reviewed_attachments) != set(attachment_inventory):
                 raise ValueError(f"material attachments are not fully reviewed for {evidence_id}")
             if set(fact_keys) != expected_fact_rows.get(evidence_id, set()):
-                raise ValueError(f"reviewed fact excerpts do not match provenance for {evidence_id}")
+                raise ValueError(
+                    f"reviewed fact excerpts do not match provenance for {evidence_id}"
+                )
 
         by_id[evidence_id] = review
         reviews.append(review)
