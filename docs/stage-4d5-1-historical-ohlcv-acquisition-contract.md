@@ -53,6 +53,8 @@ The official Kite historical API documents the `day` interval, date/time request
 5. Do not describe Kite historical candles as exchange-as-traded raw prices. Zerodha Support states that Kite historical OHLC is provider-adjusted for bonuses, splits, rights issues, spin-offs and extraordinary dividends at or above 2% of underlying market value. Ordinary dividends below that threshold are not included in the stated adjustment set. The public API reference does not expose per-candle adjustment factors or a versioned adjustment ledger. Therefore classify the downloaded series as **provider-adjusted, independently unreconciled**. Never apply a second adjustment blindly, and never label it split-and-dividend-adjusted for Stage 4D outcome labels without an independent action-by-action reconciliation and an explicit decision about ordinary dividends.
 
 References:
+- NSE 2025 Capital Market Segment holiday circular (NSE/CMTR/65587): https://nsearchives.nseindia.com/content/circulars/CMTR65587.pdf
+- NSE 2026 official equity holiday page: https://www.nseindia.com/resources/exchange-communication-holidays
 - Kite historical data API: https://kite.trade/docs/connect/v3/historical/
 - Official Python client method contract: https://kite.trade/docs/pykiteconnect/v4/
 - Zerodha Support — Kite chart historical OHLC corporate-action adjustments: https://support.zerodha.com/category/trading-and-markets/charts-and-orders/charts/articles/kite-charts-not-matching-as-per-the-records-in-nse-or-bse
@@ -149,7 +151,7 @@ A successful recent-window pilot authorizes only a separate historical-depth pro
 - Each symbol manifest entry records exact inclusive request chunk ranges, chunk completion state, and request/retry counters. The instrument-master request is separately counted. Counter fields are logical calls, attempts, retries, errors, and terminal failures.
 - Extended `KiteRequestExecutor` with detached counters for logical calls, attempts, retries, errors, and terminal failures; existing pacing and retry behavior is unchanged.
 - Added `tests/test_acquisition_manifest.py`, `tests/test_acquisition_pilot.py`, and request-telemetry coverage in `tests/test_market_data_reliability.py`. The CLI help is included in the no-credentials operational smoke tests.
-- The checked-in NSE holiday file currently covers 2026 only. A complete rolling 12-month pilot ending in November 2026 therefore requires an operator-supplied official calendar file covering the full requested dates (including special sessions); the runner fails if requested dates exceed declared calendar coverage.
+- Added `data/market_calendar/nse-equity-holidays-2025-2026.csv`, sourced from the official NSE 2025 Capital Market Segment holiday circular and the official NSE 2026 equity holiday page. It covers the default rolling 12-month pilot window from 2025-11-06 through 2026-11-05. Muhurat sessions are retained as holiday dates in the source file and must be added back through explicit `--special-session` arguments if a requested pilot window includes them.
 - CI on the preceding implementation head passed both push and PR workflows. Fresh checks for the latest test commit are running; no live Kite request has been made by CI or this implementation session.
 
 ## Next implementation sequence
@@ -166,7 +168,7 @@ This stage is research-data acquisition only. It does not modify Phase 1 signals
 
 ## Local operator command
 
-The CLI defaults to the five-symbol EQ pilot `RELIANCE,HDFCBANK,INFY,SUNPHARMA,LT`, the archived 2026-09-30-effective Nifty 500 source, and the local 2026 holiday file. The calendar file in this repository covers only 2026; it is **not sufficient** for a rolling 12-month window ending in November 2026. Before running, supply an official calendar CSV that covers the full requested interval and separately document any special sessions.
+The CLI defaults to the five-symbol EQ pilot `RELIANCE,HDFCBANK,INFY,SUNPHARMA,LT`, the archived 2026-09-30-effective Nifty 500 source, and the combined official 2025-2026 NSE equity holiday file. Its default window is 2025-11-06 through 2026-11-05, with declared calendar coverage from 2025-01-01 through 2026-12-31. Override the calendar and coverage only when using another source snapshot; separately document any special session inside the requested interval.
 
 Example (replace the calendar path, source, and dates with the approved full-window calendar evidence):
 
