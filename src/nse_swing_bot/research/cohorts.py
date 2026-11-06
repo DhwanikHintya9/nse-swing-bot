@@ -116,7 +116,7 @@ def _median_bootstrap_interval(
     if values.size == 1:
         value = float(values[0])
         return value, value
-    seed_material = f"{random_seed}:{cohort}:{horizon}".encode("utf-8")
+    seed_material = f"{random_seed}:{cohort}:{horizon}".encode()
     seed = int.from_bytes(hashlib.sha256(seed_material).digest()[:8], "big")
     generator = np.random.default_rng(seed)
     medians = np.empty(samples, dtype=float)
@@ -176,13 +176,13 @@ def build_event_cohort_summary(
             "coverage_frame is missing required columns: "
             + ", ".join(sorted(missing_coverage))
         )
-    if research_frame["signal"].isna().any() or not research_frame["signal"].isin(
-        [True, False]
+    if not research_frame["signal"].map(
+        lambda value: isinstance(value, (bool, np.bool_))
     ).all():
         raise ValueError("Phase 1 signal column must contain non-null booleans")
-    if research_frame["has_high_materiality_event_30d"].isna().any() or not research_frame[
-        "has_high_materiality_event_30d"
-    ].isin([True, False]).all():
+    if not research_frame["has_high_materiality_event_30d"].map(
+        lambda value: isinstance(value, (bool, np.bool_))
+    ).all():
         raise ValueError("high-materiality feature must contain non-null booleans")
 
     source_count_columns = (
@@ -195,17 +195,13 @@ def build_event_cohort_summary(
     counts = research_frame.loc[:, list(source_count_columns)].apply(
         pd.to_numeric, errors="coerce"
     )
-    if counts.isna().any().any() or (counts < 0).any().any():
-        raise ValueError("event count features must be non-null, numeric and non-negative")
-
-    coverage_complete: list[bool] = []
-    decision_dates = research_frame.index.tz_convert("Asia/Kolkata")
-    for (_, row), decision_at, decision_date in zip(
-        coverage_frame.iterrows(), research_frame.index, decision_dates, strict=True
+    count_values = counts.to_numpy(dtype=float)
+    if (
+        not np.isfinite(count_values).all()
+        or (count_values < 0).any()
+        or (count_values % 1 != 0).any()
     ):
-        coverage_complete.append(
-            _coverage_is_complete(row, decision_at, decision_date.date())
-        )
+        raise ValueError("event count features must be finite non-negative integers")
 
     if outcome_labels.empty:
         raise ValueError("outcome_labels must not be empty")
@@ -224,11 +220,10 @@ def build_event_cohort_summary(
             "outcome_labels are missing required columns: "
             + ", ".join(sorted(missing_labels))
         )
-    labels = outcome_labels.loc[
-        outcome_labels["symbol"].astype(str).str.upper() == normalized_symbol
-    ].copy()
-    if labels.empty:
-        raise ValueError("outcome_labels contain no rows for the requested symbol")
+    labels = outcome_labels.copy()
+    labels["symbol"] = labels["symbol"].astype(str).str.upper()
+    if set(labels["symbol"]) != {normalized_symbol}:
+        raise ValueError("outcome_labels must contain only the requested symbol")
     if labels["horizon_sessions"].isna().any():
         raise ValueError("outcome label horizons cannot be null")
     numeric_horizons = pd.to_numeric(labels["horizon_sessions"], errors="raise")
@@ -239,11 +234,21 @@ def build_event_cohort_summary(
         raise ValueError("outcome label horizons must be positive")
     if not labels["label_status"].isin(["complete", "censored"]).all():
         raise ValueError("outcome label status must be complete or censored")
-    labels["_decision_utc"] = pd.to_datetime(labels["decision_at"], utc=True, errors="raise")
+    parsed_decisions: list[pd.Timestamp] = []
+    for value in labels["decision_at"]:
+        timestamp = _aware_timestamp(value, "outcome label decision_at")
+        parsed_decisions.append(timestamp.tz_convert("UTC"))
+    labels["_decision_utc"] = pd.DatetimeIndex(parsed_decisions)
     if labels.duplicated(["symbol", "_decision_utc", "horizon_sessions"]).any():
         raise ValueError("outcome labels contain duplicate symbol/decision/horizon keys")
 
     horizons = tuple(sorted(int(value) for value in labels["horizon_sessions"].unique()))
+    research_keys = {
+        timestamp.tz_convert("UTC").value for timestamp in research_frame.index
+    }
+    label_keys = set(labels["_decision_utc"].astype("int64"))
+    if not label_keys.issubset(research_keys):
+        raise ValueError("outcome labels contain decision timestamps outside research_frame")
     signal_rows = research_frame.loc[research_frame["signal"]].copy()
     if signal_rows.empty:
         raise ValueError("research_frame must contain at least one Phase 1 signal")
