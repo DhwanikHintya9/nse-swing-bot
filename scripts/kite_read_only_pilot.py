@@ -91,6 +91,8 @@ def main() -> int:
     symbols = [value.strip().upper() for value in args.symbols.split(",")]
     if len(symbols) != 5 or len(set(symbols)) != 5 or any(not value for value in symbols):
         parser.error("--symbols must contain exactly five unique, non-empty symbols")
+    if len(dict(args.special_session)) != len(args.special_session):
+        parser.error("--special-session cannot contain duplicate dates")
 
     api_key = os.environ.get("KITE_API_KEY")
     access_token = os.environ.get("KITE_ACCESS_TOKEN")
