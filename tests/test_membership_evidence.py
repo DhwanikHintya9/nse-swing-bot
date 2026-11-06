@@ -20,10 +20,10 @@ CAPTURED = "2026-11-06T10:00:00Z"
 
 def _write_snapshot(path: Path, rows: list[tuple[str, str]]) -> Path:
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = writer(handle, lineterminator="\n")
-        writer.writerow(["Company Name", "Industry", "Symbol", "Series", "ISIN Code"])
+        csv_writer = writer(handle, lineterminator="\n")
+        csv_writer.writerow(["Company Name", "Industry", "Symbol", "Series", "ISIN Code"])
         for index, (symbol, isin) in enumerate(rows):
-            writer.writerow([f"Company {index}", "Industry", symbol, "EQ", isin])
+            csv_writer.writerow([f"Company {index}", "Industry", symbol, "EQ", isin])
     return path
 
 
