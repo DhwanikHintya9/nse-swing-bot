@@ -44,7 +44,12 @@ def _utc_timestamp(value: str, field: str) -> str:
 
 def _is_official_nse_url(value: str) -> bool:
     host = (urlparse(value).hostname or "").lower()
-    return host == "niftyindices.com" or host.endswith(".niftyindices.com") or host == "nseindia.com" or host.endswith(".nseindia.com")
+    return (
+        host == "niftyindices.com"
+        or host.endswith(".niftyindices.com")
+        or host == "nseindia.com"
+        or host.endswith(".nseindia.com")
+    )
 
 
 def _column_map(fieldnames: list[str] | None) -> dict[str, str]:
@@ -120,13 +125,19 @@ def ingest_membership_snapshot(
     if not source_url.startswith("https://") or not evidence_url.startswith("https://"):
         raise MembershipEvidenceError("source_url and evidence_url must use HTTPS")
     if not _is_official_nse_url(source_url):
-        raise MembershipEvidenceError("source_url must identify an official NSE/Nifty Indices source")
+        raise MembershipEvidenceError(
+            "source_url must identify an official NSE/Nifty Indices source"
+        )
     if source_kind == "official_snapshot" and not _is_official_nse_url(evidence_url):
-        raise MembershipEvidenceError("official_snapshot evidence_url must be on an official NSE domain")
+        raise MembershipEvidenceError(
+            "official_snapshot evidence_url must be on an official NSE domain"
+        )
     if source_kind == "wayback_capture":
         host = (urlparse(evidence_url).hostname or "").lower()
         if host not in {"web.archive.org", "wayback.archive-it.org"}:
-            raise MembershipEvidenceError("wayback_capture evidence_url must be an archive replay URL")
+            raise MembershipEvidenceError(
+                "wayback_capture evidence_url must be an archive replay URL"
+            )
     captured = _utc_timestamp(captured_at_utc, "captured_at_utc")
     published = (
         _utc_timestamp(published_at_utc, "published_at_utc")
@@ -191,7 +202,10 @@ def _load_manifest(path: Path) -> tuple[dict[str, Any], list[dict[str, str]]]:
         manifest = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise MembershipEvidenceError(f"cannot read snapshot manifest {path}: {error}") from error
-    if manifest.get("schema_version") != SCHEMA_VERSION or manifest.get("index_name") != "NIFTY 500":
+    if (
+        manifest.get("schema_version") != SCHEMA_VERSION
+        or manifest.get("index_name") != "NIFTY 500"
+    ):
         raise MembershipEvidenceError(f"unsupported membership manifest: {path}")
     supplied_hash = manifest.get("manifest_sha256")
     unhashed_manifest = dict(manifest)
@@ -307,6 +321,6 @@ def reconcile_membership_snapshots(snapshot_dir: Path, output_csv: Path) -> dict
             "They do not establish the exact effective date.",
             "Unobserved intermediate changes may cancel out between snapshots.",
             "ISIN migrations, mergers and demergers require separate identity-chain evidence.",
-            "Press releases can resolve a change date only when the announcement explicitly supports it.",
+            "Press releases resolve a change date only when explicitly supported by the notice.",
         ],
     }
