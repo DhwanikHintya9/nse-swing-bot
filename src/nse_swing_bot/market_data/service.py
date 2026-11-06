@@ -46,7 +46,21 @@ class MarketDataService:
         expected_sessions: pd.DatetimeIndex | None = None,
         chunk_days: int = 365,
     ) -> list[Path]:
-        """Fetch one symbol; quarantine invalid responses instead of persisting as good data."""
+        """Fetch, validate, and persist one symbol's daily history."""
+        paths, _ = self.sync_daily_history_with_data(
+            instrument, start, end, expected_sessions, chunk_days
+        )
+        return paths
+
+    def sync_daily_history_with_data(
+        self,
+        instrument: pd.Series,
+        start: date,
+        end: date,
+        expected_sessions: pd.DatetimeIndex | None = None,
+        chunk_days: int = 365,
+    ) -> tuple[list[Path], pd.DataFrame]:
+        """Persist validated history and return the exact validated frame for read-back checks."""
         exchange = str(instrument["exchange"])
         symbol = str(instrument["tradingsymbol"])
         token = int(instrument["instrument_token"])
@@ -77,4 +91,5 @@ class MarketDataService:
                     f"{exchange}:{symbol}", start, end, str(error), candles
                 )
             raise
-        return self.store.write_snapshot(f"{exchange}:{symbol}", validated)
+        paths = self.store.write_snapshot(f"{exchange}:{symbol}", validated)
+        return paths, validated
