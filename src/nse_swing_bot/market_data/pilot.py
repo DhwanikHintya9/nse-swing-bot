@@ -92,6 +92,17 @@ def _stats_delta(
     return delta
 
 
+def _chunk_ranges(start: date, end: date, chunk_days: int) -> list[dict[str, str]]:
+    """Return the exact inclusive date ranges used by the adapter's chunking rule."""
+    ranges: list[dict[str, str]] = []
+    cursor = start
+    while cursor <= end:
+        chunk_end = min(end, cursor + pd.Timedelta(days=chunk_days - 1).to_pytimedelta())
+        ranges.append({"start": cursor.isoformat(), "end": chunk_end.isoformat()})
+        cursor = chunk_end + pd.Timedelta(days=1).to_pytimedelta()
+    return ranges
+
+
 def _coverage_summary(
     candles: pd.DataFrame,
     expected_sessions: pd.DatetimeIndex,
@@ -137,6 +148,13 @@ def run_kite_daily_pilot(
         raise ValueError("start must be on or before end")
     if chunk_days < 1:
         raise ValueError("chunk_days must be positive")
+    normalized_symbols = [symbol.strip().upper() for symbol in symbols]
+    if (
+        len(normalized_symbols) != 5
+        or len(set(normalized_symbols)) != 5
+        or any(not symbol for symbol in normalized_symbols)
+    ):
+        raise ValueError("pilot requires exactly five unique, non-empty symbols")
     data_root = Path(data_root).resolve()
     started = datetime.now(UTC)
 
@@ -168,7 +186,10 @@ def run_kite_daily_pilot(
     )
     raw_instruments = adapter.fetch_nse_instruments()
     instruments = normalize_instrument_master(raw_instruments)
-    instrument_snapshot = save_instrument_snapshot(instruments, data_root / "snapshots")
+    instrument_captured_at = datetime.now(UTC)
+    instrument_snapshot = save_instrument_snapshot(
+        instruments, data_root / "snapshots", captured_at=instrument_captured_at
+    )
     instrument_snapshot_sha256 = sha256_file(instrument_snapshot)
     instrument_master_request_stats = request_executor.snapshot_stats()
 
@@ -213,6 +234,8 @@ def run_kite_daily_pilot(
             "instrument_master_row_sha256": item["instrument_master_row_sha256"],
             "requested_start_date": start.isoformat(),
             "requested_end_date": end.isoformat(),
+            "request_chunks": _chunk_ranges(start, end, chunk_days),
+            "chunk_completion_status": "not_started",
             "snapshot_files": [],
             "readback_verified": False,
             "status": "failed",
@@ -225,6 +248,7 @@ def run_kite_daily_pilot(
                 chunk_days=chunk_days,
                 expected_sessions=None,
             )
+            result["chunk_completion_status"] = "complete"
             validated = validate_daily_candles(candles)
             coverage = _coverage_summary(validated, expected_sessions, start, end)
             result.update(coverage)
@@ -263,12 +287,14 @@ def run_kite_daily_pilot(
                 else "incomplete"
             )
         except CandleDataError as error:
+            result["chunk_completion_status"] = "partial_or_failed"
             quarantine_path = quarantine.store(
                 f"NSE:{symbol}", start, end, str(error), error.raw_candles
             )
             result["quarantine_path"] = str(quarantine_path.relative_to(data_root))
             result["error_type"] = type(error).__name__
         except Exception as error:
+            result["chunk_completion_status"] = "partial_or_failed"
             result["error_type"] = type(error).__name__
             result["error_category"] = (
                 "coverage_or_validation"
@@ -331,7 +357,7 @@ def run_kite_daily_pilot(
             "sha256": instrument_snapshot_sha256,
             "bytes": instrument_snapshot.stat().st_size,
             "row_count": int(len(instruments)),
-            "captured_at_utc": started.isoformat(),
+            "captured_at_utc": instrument_captured_at.isoformat(),
         },
         "symbols": symbol_results,
         "limitations": [
