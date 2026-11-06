@@ -244,23 +244,23 @@ def build_event_cohort_summary(
 
     horizons = tuple(sorted(int(value) for value in labels["horizon_sessions"].unique()))
     research_keys = {
-        timestamp.tz_convert("UTC").value for timestamp in research_frame.index
+        timestamp.tz_convert("UTC") for timestamp in research_frame.index
     }
-    label_keys = set(labels["_decision_utc"].astype("int64"))
+    label_keys = set(labels["_decision_utc"])
     if not label_keys.issubset(research_keys):
         raise ValueError("outcome labels contain decision timestamps outside research_frame")
     signal_rows = research_frame.loc[research_frame["signal"]].copy()
     if signal_rows.empty:
         raise ValueError("research_frame must contain at least one Phase 1 signal")
     signal_keys = {
-        timestamp.tz_convert("UTC").value for timestamp in signal_rows.index
+        timestamp.tz_convert("UTC") for timestamp in signal_rows.index
     }
-    available_keys = set(labels["_decision_utc"].astype("int64"))
+    available_keys = set(labels["_decision_utc"])
     for key in signal_keys:
         if key not in available_keys:
             raise ValueError("outcome labels are missing a Phase 1 signal decision timestamp")
     for key in signal_keys:
-        rows_for_decision = labels.loc[labels["_decision_utc"].astype("int64") == key]
+        rows_for_decision = labels.loc[labels["_decision_utc"] == key]
         if set(rows_for_decision["horizon_sessions"]) != set(horizons):
             raise ValueError("outcome labels do not cover every horizon for each signal")
 
@@ -275,9 +275,9 @@ def build_event_cohort_summary(
             decision_at.tz_convert("Asia/Kolkata").date(),
         )
         for horizon in horizons:
-            key = (decision_at.tz_convert("UTC").value, horizon)
+            key = (decision_at.tz_convert("UTC"), horizon)
             label_row = labels.loc[
-                (labels["_decision_utc"].astype("int64") == key[0])
+                (labels["_decision_utc"] == key[0])
                 & (labels["horizon_sessions"] == horizon)
             ].iloc[0]
             observation_rows.append(
