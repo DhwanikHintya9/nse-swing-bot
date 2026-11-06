@@ -5,7 +5,6 @@ import hashlib
 import json
 import os
 import tempfile
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -105,7 +104,9 @@ def inspect_captured_pdf(
         metadata_rows = {
             field.lstrip("/").lower(): _metadata_value(metadata.get(field))
             for field in metadata_fields
-        } if metadata is not None else {field.lstrip("/").lower(): None for field in metadata_fields}
+        } if metadata is not None else {
+            field.lstrip("/").lower(): None for field in metadata_fields
+        }
 
         attachments: list[dict[str, Any]] = []
         attachment_total = 0
@@ -150,9 +151,11 @@ def inspect_captured_pdf(
         "embedded_attachment_total_bytes": attachment_total,
         "inspection_limitations": [
             "Text extraction may omit scanned/image-only content, layout, tables or handwriting.",
-            "Bookmarks and metadata are document-provided labels, not proof of annexure completeness.",
+            "Bookmarks and metadata are document-provided labels, not proof of "
+            "annexure completeness.",
             "Embedded attachments are inventoried and hashed but not extracted.",
-            "Inspection does not establish source authenticity, direct review, P1 status or event admission.",
+            "Inspection does not establish source authenticity, direct review, P1 status "
+            "or event admission.",
         ],
     }
     output = output_manifest_path.expanduser().absolute()
@@ -191,7 +194,9 @@ def verify_exact_pdf_excerpt(
     if not isinstance(exact_excerpt, str) or not exact_excerpt.strip():
         raise ValueError("exact_excerpt must be a non-empty string")
     if attachment_name is not None:
-        raise ValueError("inspect and capture the embedded attachment separately before excerpt review")
+        raise ValueError(
+            "inspect and capture the embedded attachment separately before excerpt review"
+        )
     capture = verify_capture_manifest(capture_manifest_path)
     if capture.archive_path.suffix.lower() != ".pdf":
         raise ValueError("capture must identify a PDF file")
