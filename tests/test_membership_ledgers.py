@@ -229,7 +229,9 @@ def test_identity_event_self_link_requires_continues_as(tmp_path: Path) -> None:
 def test_continues_as_requires_same_internal_security_id(tmp_path: Path) -> None:
     identifiers, identity_events, membership_events = _paths(tmp_path)
     rows = _identifier_rows()
-    second = dict(rows[0], security_id="SEC-2", issuer_id="ISS-2")
+    second = dict(
+        rows[0], security_id="SEC-2", issuer_id="ISS-2", identifier_value="INE000000002"
+    )
     rows.append(second)
     _write(identifiers, IDENTIFIER_FIELDS, rows)
     events = _identity_event_rows()
