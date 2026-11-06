@@ -51,6 +51,7 @@ A secondary source reports that the monthly ZIP archive included Nifty 500 throu
   - Validates source-attributed constituent CSVs.
   - Supports the official Nifty CSV headers: Company Name, Industry, Symbol, Series, ISIN Code.
   - Normalizes whitespace and case, validates Indian equity ISIN syntax, rejects duplicate ISINs and checks configurable row-count bounds (default 450–550; deliberately not exactly 500).
+  - Preserves the exact NSE source placeholder row `DUMMYHEG` / `DUM545A01024` as `source_placeholder_unresolved`; it is not treated as an ISIN and is excluded from ISIN-keyed membership diffs. Any other non-`INE` identifier remains a hard validation error.
   - Retains the raw source bytes and SHA-256.
   - Writes a normalized ISIN-keyed CSV and a manifest with source URL, evidence URL, as-of date, capture timestamp, row count and content hashes.
   - Supports `official_snapshot` and `wayback_capture` only. Third-party reconstructions are discovery-only.
@@ -109,7 +110,7 @@ Outputs:
 - `data/universe/membership_reconciliation/observed-membership-changes.csv`
 - `data/universe/membership_reconciliation/reconciliation-report.json`
 
-The diff reports only that an ISIN was present in one observed snapshot and absent in the next. It does not claim when during that interval the change became effective. Changes that enter and leave between two snapshots can remain invisible; this is why dated official change notices and denser snapshots are required.
+The diff reports only that a syntactically valid equity ISIN was present in one observed snapshot and absent in the next. The exact recognized source placeholder is retained in each snapshot and manifest, counted as an unresolved identity, and excluded from ISIN-keyed diffs; it is not mapped to a tradable instrument. It does not claim when during that interval the change became effective. Changes that enter and leave between two snapshots can remain invisible; this is why dated official change notices and denser snapshots are required.
 
 ## Required next evidence collection
 
