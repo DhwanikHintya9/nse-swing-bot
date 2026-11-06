@@ -49,11 +49,12 @@ The official Kite historical API documents the `day` interval, date/time request
 2. Do not encode an undocumented maximum request-window size as a correctness rule.
 3. Retain the repository's existing 365-calendar-day chunk default for the pilot; if Kite rejects a window, fail with the exact range and let the operator rerun with a smaller chunk size. Do not silently truncate or bisect in a way that loses request lineage.
 4. Record the earliest returned candle and requested range for every symbol. A successful API response does not prove complete history.
-5. Treat returned prices as **raw / adjustment basis unverified** until a separate, independently verified corporate-action process establishes the adjustment basis. Never label these candles split-and-dividend-adjusted merely because the API returned them.
+5. Do not describe Kite historical candles as exchange-as-traded raw prices. Zerodha Support states that Kite historical OHLC is provider-adjusted for bonuses, splits, rights issues, spin-offs and extraordinary dividends at or above 2% of underlying market value. Ordinary dividends below that threshold are not included in the stated adjustment set. The public API reference does not expose per-candle adjustment factors or a versioned adjustment ledger. Therefore classify the downloaded series as **provider-adjusted, independently unreconciled**. Never apply a second adjustment blindly, and never label it split-and-dividend-adjusted for Stage 4D outcome labels without an independent action-by-action reconciliation and an explicit decision about ordinary dividends.
 
 References:
 - Kite historical data API: https://kite.trade/docs/connect/v3/historical/
 - Official Python client method contract: https://kite.trade/docs/pykiteconnect/v4/
+- Zerodha Support — Kite chart historical OHLC corporate-action adjustments: https://support.zerodha.com/category/trading-and-markets/charts-and-orders/charts/articles/kite-charts-not-matching-as-per-the-records-in-nse-or-bse
 
 ## Pilot protocol
 
@@ -90,7 +91,7 @@ Write one immutable JSON manifest per run under the local, Git-ignored market-da
 - Schema version and manifest ID.
 - Run start and completion timestamps in UTC.
 - Tool/package version and Git commit SHA when available.
-- Explicit `read_only=true`, `orders_endpoint_calls=0`, `production_eligible=false`, and `adjustment_status=unverified`.
+- Explicit `read_only=true`, `orders_endpoint_calls=0`, `production_eligible=false`, and `adjustment_status=provider_adjusted_unreconciled`.
 
 ### Source and request identity
 
@@ -107,7 +108,7 @@ Write one immutable JSON manifest per run under the local, Git-ignored market-da
 - Checkpoint chunk ranges and completion status; retries/failures summarized without secrets.
 - Read-back verification result and numeric comparison tolerances.
 - Quarantine references and reasons, if any.
-- Explicit limitations: current token mapping is not a historical instrument identity; current Kite dump cannot alone prove historical symbol/ISIN continuity; no corporate-action adjustment has been applied or verified.
+- Explicit limitations: current token mapping is not a historical instrument identity; current Kite dump cannot alone prove historical symbol/ISIN continuity; Kite's provider adjustment policy is not independently reconciled and is not a substitute for the project's declared split-and-dividend adjustment convention.
 
 ### Manifest integrity
 
@@ -141,7 +142,7 @@ A successful recent-window pilot authorizes only a separate historical-depth pro
 
 ## Implementation progress
 
-- Added `src/nse_swing_bot/market_data/acquisition_manifest.py` with canonical JSON serialization, SHA-256 payload binding, required research-only safety fields, recursive rejection of credential-like field names, tamper verification, streaming file hashing, and atomic no-overwrite publication.
+- Added `src/nse_swing_bot/market_data/acquisition_manifest.py` with canonical JSON serialization, SHA-256 payload binding, required research-only safety fields, recursive rejection of credential-like field names, tamper verification, streaming file hashing, and atomic no-overwrite publication. The manifest now requires `provider_adjusted_unreconciled` rather than implying exchange-raw prices.
 - Added `tests/test_acquisition_manifest.py` for deterministic digests, tamper detection, safety-envelope enforcement, credential-field rejection, non-finite JSON rejection, and immutable file publication.
 - CI is running for the current feature-branch head; results have not yet been confirmed.
 
