@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -97,9 +97,9 @@ def _chunk_ranges(start: date, end: date, chunk_days: int) -> list[dict[str, str
     ranges: list[dict[str, str]] = []
     cursor = start
     while cursor <= end:
-        chunk_end = min(end, cursor + pd.Timedelta(days=chunk_days - 1).to_pytimedelta())
+        chunk_end = min(end, cursor + timedelta(days=chunk_days - 1))
         ranges.append({"start": cursor.isoformat(), "end": chunk_end.isoformat()})
-        cursor = chunk_end + pd.Timedelta(days=1).to_pytimedelta()
+        cursor = chunk_end + timedelta(days=1)
     return ranges
 
 
