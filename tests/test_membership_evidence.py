@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import csv
-import json
+from csv import DictReader, writer
 from datetime import date
+from json import loads
 from pathlib import Path
 
 import pytest
@@ -20,7 +20,7 @@ CAPTURED = "2026-11-06T10:00:00Z"
 
 def _write_snapshot(path: Path, rows: list[tuple[str, str]]) -> Path:
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.writer(handle, lineterminator="\n")
+        writer = writer(handle, lineterminator="\n")
         writer.writerow(["Company Name", "Industry", "Symbol", "Series", "ISIN Code"])
         for index, (symbol, isin) in enumerate(rows):
             writer.writerow([f"Company {index}", "Industry", symbol, "EQ", isin])
@@ -57,7 +57,7 @@ def _ingest(path: Path, output: Path, as_of: date, source_kind: str = "official_
 def test_ingest_retains_raw_snapshot_and_verifiable_hashes(tmp_path: Path) -> None:
     source = _write_snapshot(tmp_path / "source.csv", _rows("S", 0, 500))
     manifest_path = _ingest(source, tmp_path / "snapshots", date(2026, 9, 30))
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = loads(manifest_path.read_text(encoding="utf-8"))
 
     raw_path = manifest_path.parent / manifest["raw_filename"]
     normalized_path = manifest_path.parent / manifest["normalized_filename"]
@@ -86,7 +86,7 @@ def test_reconcile_reports_observed_changes_without_exact_effective_dates(
     assert report["total_observed_changes"] == 4
     assert report["effective_dates_inferred"] is False
     with diff_path.open(encoding="utf-8", newline="") as handle:
-        changes = list(csv.DictReader(handle))
+        changes = list(DictReader(handle))
     assert sum(row["change"] == "observed_addition" for row in changes) == 2
     assert sum(row["change"] == "observed_removal" for row in changes) == 2
     assert all(row["effective_date"] == "" for row in changes)
