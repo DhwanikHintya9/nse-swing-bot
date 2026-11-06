@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import datetime
+import importlib
 import json
 import pathlib
 
 import pandas as pd
 import pytest
 
-import nse_swing_bot.market_data.membership_evidence as membership_evidence
+membership_evidence = importlib.import_module(
+    "nse_swing_bot.market_data.membership_evidence"
+)
 
 
 OFFICIAL_URL = "https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
@@ -32,7 +35,12 @@ def _rows(prefix: str, start: int, count: int) -> list[tuple[str, str]]:
     ]
 
 
-def _ingest(path: pathlib.Path, output: pathlib.Path, as_of: datetime.date, source_kind: str = "official_snapshot") -> pathlib.Path:
+def _ingest(
+    path: pathlib.Path,
+    output: pathlib.Path,
+    as_of: datetime.date,
+    source_kind: str = "official_snapshot",
+) -> pathlib.Path:
     evidence_url = (
         OFFICIAL_URL
         if source_kind == "official_snapshot"
@@ -110,7 +118,10 @@ def test_wayback_capture_requires_official_original_source(tmp_path: pathlib.Pat
 
 def test_third_party_reconstruction_cannot_be_an_anchor(tmp_path: pathlib.Path) -> None:
     source = _write_snapshot(tmp_path / "source.csv", _rows("S", 0, 500))
-    with pytest.raises(membership_evidence.MembershipEvidenceError, match="third-party reconstructions"):
+    with pytest.raises(
+        membership_evidence.MembershipEvidenceError,
+        match="third-party reconstructions",
+    ):
         membership_evidence.ingest_membership_snapshot(
             source,
             as_of_date=datetime.date(2024, 9, 30),
