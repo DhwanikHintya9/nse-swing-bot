@@ -17,7 +17,7 @@ The immutable JSON report records:
 - bookmark titles and page numbers;
 - embedded attachment names, occurrences, byte lengths and SHA-256 digests.
 
-Embedded attachments are inventoried and hashed in memory; they are not extracted. Limits default to 250 MiB per PDF, 5,000 pages and 100 MiB total embedded attachment bytes. They can be tightened using CLI options.
+Embedded attachment names are read from the PDF name tree only; embedded streams are not decompressed or extracted. Limits default to 250 MiB per PDF, 5,000 pages and 500 embedded attachment names. The name-tree depth is capped at 32. These limits can be tightened using CLI options. Embedded streams are not decompressed or extracted.
 
 ## Verify an exact excerpt
 
