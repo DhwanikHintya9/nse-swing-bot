@@ -135,3 +135,121 @@ def test_fact_link_cannot_cross_event_boundary(tmp_path):
 def test_missing_document_reference_is_rejected(tmp_path):
     with pytest.raises(ValueError, match="unknown evidence_id"):
         _load(tmp_path, [_document()], [_link(evidence_id="missing")])
+
+
+def _capture_for_document(tmp_path: Path, document):
+    from nse_swing_bot.events.capture import capture_source_bytes
+
+    source = tmp_path / "issuer-filing.pdf"
+    source.write_bytes(b"%PDF-1.7\\nissuer filing bytes\\n")
+    captured = capture_source_bytes(
+        source,
+        tmp_path / "archive",
+        event_id=document["event_id"],
+        source_record_id=document["source_record_id"],
+        source_url=document["source_url"],
+        document_type=document["document_type"],
+        captured_at=datetime(2026, 11, 6, 12, 0, tzinfo=UTC),
+    )
+    return captured
+
+
+def test_verified_manifest_binds_p1_to_exact_capture_lineage(tmp_path):
+    from nse_swing_bot.events.provenance import load_verified_evidence_manifest
+
+    document = _document()
+    captured = _capture_for_document(tmp_path, document)
+    document["content_sha256"] = captured.sha256
+    bundle_path = tmp_path / "manifest.json"
+    bundle_path.write_text(json.dumps({
+        "schema_version": 1,
+        "documents": [document],
+        "fact_links": [_link()],
+    }), encoding="utf-8")
+
+    result = load_verified_evidence_manifest(
+        bundle_path,
+        {"DABUR-CEO": "src-1"},
+        {"ev-1": captured.manifest_path},
+    )
+
+    assert result.verified_captures["ev-1"].sha256 == captured.sha256
+    assert result.bundle.evidence_records[0].review_status.value == "accepted"
+
+
+def test_verified_manifest_rejects_missing_p1_capture(tmp_path):
+    from nse_swing_bot.events.provenance import load_verified_evidence_manifest
+
+    _load(tmp_path, [_document()], [_link()])
+    path = tmp_path / "manifest.json"
+    with pytest.raises(ValueError, match="missing verified capture"):
+        load_verified_evidence_manifest(path, {"DABUR-CEO": "src-1"}, {})
+
+
+@pytest.mark.parametrize(
+    ("field", "wrong_value"),
+    [
+        ("event_id", "OTHER-EVENT"),
+        ("source_record_id", "wrong-source"),
+        ("source_url", "https://wrong.example/filing.pdf"),
+        ("document_type", "issuer_signed_mirror"),
+    ],
+)
+def test_verified_manifest_rejects_capture_lineage_mismatch(tmp_path, field, wrong_value):
+    from nse_swing_bot.events.capture import capture_source_bytes
+    from nse_swing_bot.events.provenance import load_verified_evidence_manifest
+
+    document = _document()
+    source = tmp_path / "issuer-filing.pdf"
+    source.write_bytes(b"%PDF-1.7\\nissuer filing bytes\\n")
+    metadata = {
+        "event_id": document["event_id"],
+        "source_record_id": document["source_record_id"],
+        "source_url": document["source_url"],
+        "document_type": document["document_type"],
+    }
+    metadata[field] = wrong_value
+    captured = capture_source_bytes(
+        source,
+        tmp_path / "archive",
+        **metadata,
+        captured_at=datetime(2026, 11, 6, 12, 0, tzinfo=UTC),
+    )
+    document["content_sha256"] = captured.sha256
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps({
+        "schema_version": 1, "documents": [document], "fact_links": [_link()]
+    }), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=f"capture {field} mismatch"):
+        load_verified_evidence_manifest(
+            path, {"DABUR-CEO": "src-1"}, {"ev-1": captured.manifest_path}
+        )
+
+
+def test_verified_manifest_rejects_capture_hash_mismatch(tmp_path):
+    from nse_swing_bot.events.provenance import load_verified_evidence_manifest
+
+    document = _document()
+    captured = _capture_for_document(tmp_path, document)
+    document["content_sha256"] = "b" * 64
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps({
+        "schema_version": 1, "documents": [document], "fact_links": [_link()]
+    }), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="capture sha256 mismatch"):
+        load_verified_evidence_manifest(
+            path, {"DABUR-CEO": "src-1"}, {"ev-1": captured.manifest_path}
+        )
+
+
+def test_verified_manifest_rejects_unknown_capture_evidence_id(tmp_path):
+    from nse_swing_bot.events.provenance import load_verified_evidence_manifest
+
+    _load(tmp_path, [_document()], [_link()])
+    path = tmp_path / "manifest.json"
+    with pytest.raises(ValueError, match="unknown evidence IDs"):
+        load_verified_evidence_manifest(
+            path, {"DABUR-CEO": "src-1"}, {"not-an-evidence-id": tmp_path / "missing.json"}
+        )
