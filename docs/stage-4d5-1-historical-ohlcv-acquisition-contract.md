@@ -2,7 +2,7 @@
 
 ## Status
 
-**DESIGN APPROVED FOR IMPLEMENTATION; NO HISTORICAL BACKFILL RUN.**
+**IN PROGRESS — MANIFEST FOUNDATION IMPLEMENTED; PILOT CLI AND RUNNER PENDING.**
 
 This increment defines the acceptance contract for a read-only Kite daily-candle pilot. It does not claim that Kite data is adjusted, complete, or sufficient for the five-year study. It does not run broker orders or alter Phase 1.
 
@@ -139,14 +139,19 @@ A successful recent-window pilot authorizes only a separate historical-depth pro
 - Kite's public historical API documentation does not specify an adjustment guarantee. Independent corporate-action factors and reconciliation remain mandatory.
 - The historical retention depth is not guaranteed by the public documentation and must be measured empirically per symbol.
 
+## Implementation progress
+
+- Added `src/nse_swing_bot/market_data/acquisition_manifest.py` with canonical JSON serialization, SHA-256 payload binding, required research-only safety fields, recursive rejection of credential-like field names, tamper verification, streaming file hashing, and atomic no-overwrite publication.
+- Added `tests/test_acquisition_manifest.py` for deterministic digests, tamper detection, safety-envelope enforcement, credential-field rejection, non-finite JSON rejection, and immutable file publication.
+- CI is running for the current feature-branch head; results have not yet been confirmed.
+
 ## Next implementation sequence
 
-1. Add deterministic snapshot hashing and immutable acquisition-manifest models/writer, with unit tests.
-2. Extend the local CLI to accept a five-symbol input file and a supplied calendar snapshot; keep the existing one-symbol command behavior intact.
-3. Add mocked integration tests for successful multi-symbol pilot, mapping ambiguity, partial failure/resume, missing sessions, read-back mismatch, manifest tampering, and credential redaction.
-4. Run CI. Do not call Kite from CI.
-5. The operator runs the five-symbol pilot locally and shares only the generated non-secret manifest/report plus any sanitized failures.
-6. Review the pilot evidence before authorizing historical-depth probing or 500-symbol ingestion.
+1. Extend the local CLI to accept a five-symbol input file and a supplied calendar snapshot; keep the existing one-symbol command behavior intact.
+2. Add mocked integration tests for successful multi-symbol pilot, mapping ambiguity, partial failure/resume, missing sessions, read-back mismatch, manifest tampering, and credential redaction.
+3. Run and inspect CI. Do not call Kite from CI.
+4. The operator runs the five-symbol pilot locally and shares only the generated non-secret manifest/report plus any sanitized failures.
+5. Review the pilot evidence before authorizing historical-depth probing or 500-symbol ingestion.
 
 ## Safety
 
