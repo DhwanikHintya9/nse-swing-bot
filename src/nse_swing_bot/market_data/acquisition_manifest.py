@@ -85,8 +85,10 @@ def build_acquisition_manifest(payload: Mapping[str, Any]) -> dict[str, Any]:
         raise AcquisitionManifestError("acquisition manifest must record zero order endpoint calls")
     if payload["production_eligible"] is not False:
         raise AcquisitionManifestError("acquisition artifacts must not be production eligible")
-    if payload["adjustment_status"] != "unverified":
-        raise AcquisitionManifestError("raw Kite candles must remain adjustment_status=unverified")
+    if payload["adjustment_status"] != "provider_adjusted_unreconciled":
+        raise AcquisitionManifestError(
+            "Kite candles must declare adjustment_status=provider_adjusted_unreconciled"
+        )
     if not isinstance(payload["symbols"], list):
         raise AcquisitionManifestError("symbols must be a list")
     _reject_credential_fields(payload)
