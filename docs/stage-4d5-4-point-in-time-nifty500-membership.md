@@ -52,6 +52,7 @@ A secondary source reports that the monthly ZIP archive included Nifty 500 throu
   - Supports the official Nifty CSV headers: Company Name, Industry, Symbol, Series, ISIN Code.
   - Normalizes whitespace and case, validates Indian equity ISIN syntax, rejects duplicate ISINs and checks configurable row-count bounds (default 450–550; deliberately not exactly 500).
   - Preserves the exact NSE source placeholder row `DUMMYHEG` / `DUM545A01024` as `source_placeholder_unresolved`; it is not treated as an ISIN and is excluded from ISIN-keyed membership diffs. Any other non-`INE` identifier remains a hard validation error.
+  - Accepts one narrowly scoped historical exception: `Tata Motors Ltd DVR` / `TATAMTRDVR` / `EQ` / `IN9155A01020`, classified as `verified_source_attributed_isin` based on issuer and exchange filing evidence. It participates in ISIN-keyed diffs; the exception does not relax validation for other non-`INE` identifiers.
   - Retains the raw source bytes and SHA-256.
   - Writes a normalized ISIN-keyed CSV and a manifest with source URL, evidence URL, as-of date, capture timestamp, row count and content hashes.
   - Supports `official_snapshot` and `wayback_capture` only. Third-party reconstructions are discovery-only.
