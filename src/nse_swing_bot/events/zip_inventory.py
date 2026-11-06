@@ -48,7 +48,7 @@ def _safe_member_name(name: str) -> None:
         or any(part in {"", ".", ".."} for part in path.parts)
     ):
         raise ValueError(f"unsafe ZIP member path: {name!r}")
-    if path.parts and ":" in path.parts[0]:
+    if any(":" in part for part in path.parts):
         raise ValueError(f"unsafe ZIP member path: {name!r}")
 
 
