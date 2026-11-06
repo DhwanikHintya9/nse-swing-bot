@@ -26,6 +26,8 @@ def _document(evidence_id="ev-1", event_id="DABUR-CEO", source_id="src-1", **ove
         "directly_reviewed": True,
         "material_attachments_required": True,
         "material_attachments_reviewed": True,
+        "material_attachment_names": ["annexure-a.pdf"],
+        "reviewed_material_attachment_names": ["annexure-a.pdf"],
         "document_excerpt": "The board approved the appointment.",
     }
     item.update(overrides)
