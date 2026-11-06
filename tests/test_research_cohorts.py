@@ -157,3 +157,26 @@ def test_rejects_duplicate_outcome_keys() -> None:
     labels = pd.concat([labels, labels.iloc[[0]]], ignore_index=True)
     with pytest.raises(ValueError, match="duplicate"):
         build_event_cohort_summary(research, coverage, labels, "ABC")
+
+
+def test_rejects_naive_outcome_decision_timestamp() -> None:
+    research, coverage, labels, index = sample_inputs()
+    labels.loc[0, "decision_at"] = index[0].tz_localize(None).isoformat()
+    with pytest.raises(ValueError, match="timezone-aware"):
+        build_event_cohort_summary(research, coverage, labels, "ABC")
+
+
+def test_rejects_non_boolean_signal_values() -> None:
+    research, coverage, labels, _ = sample_inputs()
+    research["signal"] = research["signal"].astype(int)
+    with pytest.raises(ValueError, match="non-null booleans"):
+        build_event_cohort_summary(research, coverage, labels, "ABC")
+
+
+def test_rejects_labels_outside_research_frame() -> None:
+    research, coverage, labels, index = sample_inputs()
+    labels.loc[0, "decision_at"] = (
+        index[0] - pd.Timedelta(days=1)
+    ).isoformat()
+    with pytest.raises(ValueError, match="outside research_frame"):
+        build_event_cohort_summary(research, coverage, labels, "ABC")
