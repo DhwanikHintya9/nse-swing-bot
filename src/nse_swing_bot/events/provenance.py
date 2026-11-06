@@ -7,7 +7,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from nse_swing_bot.events.evidence import EvidenceRecord, EvidenceReviewStatus, EvidenceTier
+from nse_swing_bot.events.capture_verification import VerifiedCapture, verify_capture_manifest
+from nse_swing_bot.events.evidence import (
+    EvidenceRecord,
+    EvidenceReviewStatus,
+    EvidenceTier,
+)
 
 
 @dataclass(frozen=True)
@@ -163,3 +168,72 @@ def load_evidence_manifest(
         source_record_ids=source_ids,
         material_attachment_names=attachment_names,
     )
+
+
+@dataclass(frozen=True)
+class VerifiedEvidenceIngestion:
+    """Evidence bundle with verified local capture lineage for every P1 document."""
+
+    bundle: EvidenceIngestionBundle
+    verified_captures: dict[str, VerifiedCapture]
+
+
+def load_verified_evidence_manifest(
+    path: Path,
+    expected_event_sources: dict[str, str],
+    capture_manifests: dict[str, Path],
+) -> VerifiedEvidenceIngestion:
+    """Load provenance and bind P1 evidence to verified local capture bytes.
+
+    Each P1 evidence_id must have a capture manifest. Event ID, Stage 3C source
+    record ID, source URL, document type and SHA-256 must match exactly. For
+    non-P1 evidence, a supplied capture manifest is verified and cross-checked
+    too; no capture is required for research-only references.
+    """
+    bundle = load_evidence_manifest(path, expected_event_sources)
+    documents_payload = json.loads(path.read_text(encoding="utf-8"))
+    documents = {
+        item["evidence_id"]: item
+        for item in documents_payload["documents"]
+    }
+    known_ids = {record.evidence_id for record in bundle.evidence_records}
+    unknown_capture_ids = set(capture_manifests) - known_ids
+    if unknown_capture_ids:
+        raise ValueError(
+            "capture manifests reference unknown evidence IDs: "
+            + ", ".join(sorted(unknown_capture_ids))
+        )
+
+    verified: dict[str, VerifiedCapture] = {}
+    for record in bundle.evidence_records:
+        capture_path = capture_manifests.get(record.evidence_id)
+        if capture_path is None:
+            if record.source_tier == EvidenceTier.P1_DIRECT_PRIMARY_REVIEWED:
+                raise ValueError(f"missing verified capture manifest for P1 evidence {record.evidence_id}")
+            continue
+        capture = verify_capture_manifest(capture_path)
+        document = documents[record.evidence_id]
+        expected = {
+            "event_id": record.event_id,
+            "source_record_id": bundle.source_record_ids[record.evidence_id],
+            "source_url": record.source_url,
+            "document_type": bundle.document_types[record.evidence_id],
+            "sha256": record.content_sha256,
+        }
+        actual = {
+            "event_id": capture.event_id,
+            "source_record_id": capture.source_record_id,
+            "source_url": capture.source_url,
+            "document_type": capture.document_type,
+            "sha256": capture.sha256,
+        }
+        for field, expected_value in expected.items():
+            if expected_value != actual[field]:
+                raise ValueError(
+                    f"capture {field} mismatch for evidence {record.evidence_id}"
+                )
+        if document.get("original_document") is True and not record.original_document:
+            raise ValueError(f"original-document flag mismatch for {record.evidence_id}")
+        verified[record.evidence_id] = capture
+
+    return VerifiedEvidenceIngestion(bundle=bundle, verified_captures=verified)
