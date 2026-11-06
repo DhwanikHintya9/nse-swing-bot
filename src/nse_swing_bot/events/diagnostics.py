@@ -4,7 +4,7 @@ This adapter deliberately does not modify or wrap the Phase 1 signal frame.
 """
 from __future__ import annotations
 
-from datetime import datetime  # noqa: I001
+from datetime import datetime
 
 import pandas as pd
 
