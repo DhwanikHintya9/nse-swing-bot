@@ -214,14 +214,15 @@ def validate_ledgers(
             raise LedgerValidationError(
                 f"{context}: unsupported identifier_type {identifier_type!r}"
             )
-        if identifier_type == "ISIN" and not (
-            ISIN_PATTERN.fullmatch(identifier_value)
-            or identifier_value in HISTORICAL_ISIN_EXCEPTIONS
-        ):
-            raise LedgerValidationError(
-                f"{context}: ISIN does not match the accepted syntax or exact "
-                "source-attributed historical exception"
-            )
+        if identifier_type == "ISIN" and not ISIN_PATTERN.fullmatch(identifier_value):
+            if (
+                identifier_value not in HISTORICAL_ISIN_EXCEPTIONS
+                or row["identity_status"] != "verified_source_attributed_isin"
+            ):
+                raise LedgerValidationError(
+                    f"{context}: ISIN does not match the accepted syntax or exact "
+                    "source-attributed historical exception"
+                )
         if identifier_value != identifier_value.upper() or any(
             character.isspace() for character in identifier_value
         ):
