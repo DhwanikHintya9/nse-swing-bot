@@ -70,3 +70,13 @@ def test_verify_capture_manifest_rejects_naive_timestamp(tmp_path):
 
     with pytest.raises(ValueError, match="timezone offset"):
         verify_capture_manifest(captured.manifest_path)
+
+
+def test_verify_capture_manifest_rejects_windows_path_traversal(tmp_path):
+    captured = _captured(tmp_path)
+    payload = json.loads(captured.manifest_path.read_text(encoding="utf-8"))
+    payload["archive_filename"] = r"..\\outside.pdf"
+    captured.manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="basename"):
+        verify_capture_manifest(captured.manifest_path)
