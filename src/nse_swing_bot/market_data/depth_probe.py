@@ -54,7 +54,11 @@ def run_kite_historical_depth_probe(
     if chunk_days < 1:
         raise ValueError("chunk_days must be positive")
     normalized_symbols = [symbol.strip().upper() for symbol in symbols]
-    if (\n        len(normalized_symbols) != 5\n        or len(set(normalized_symbols)) != 5\n        or any(not symbol for symbol in normalized_symbols)\n    ):
+    if (
+        len(normalized_symbols) != 5
+        or len(set(normalized_symbols)) != 5
+        or any(not symbol for symbol in normalized_symbols)
+    ):
         raise ValueError("probe requires exactly five unique, non-empty symbols")
 
     data_root = Path(data_root).resolve()
@@ -192,10 +196,22 @@ def run_kite_historical_depth_probe(
         "instrument_master_request_stats": instrument_stats,
         "symbols": symbol_results,
         "interpretation": [
-            (\n                "This is an availability probe for the requested bounded interval, not a " \n                "completeness or continuity certification."\n            ),
-            (\n                "No NSE calendar was applied; returned row counts must not be interpreted " \n                "as complete trading-session coverage."\n            ),
-            (\n                "The current instrument master and 2026-effective universe snapshot do not " \n                "prove historical symbol/ISIN continuity in 2021-2022."\n            ),
-            (\n                "Kite prices remain provider_adjusted_unreconciled; no corporate-action " \n                "adjustment claim is made."\n            ),
+            (
+                "This is an availability probe for the requested bounded interval, not a " 
+                "completeness or continuity certification."
+            ),
+            (
+                "No NSE calendar was applied; returned row counts must not be interpreted " 
+                "as complete trading-session coverage."
+            ),
+            (
+                "The current instrument master and 2026-effective universe snapshot do not " 
+                "prove historical symbol/ISIN continuity in 2021-2022."
+            ),
+            (
+                "Kite prices remain provider_adjusted_unreconciled; no corporate-action " 
+                "adjustment claim is made."
+            ),
             "No Parquet research dataset or outcome labels are produced by this probe.",
         ],
     }
