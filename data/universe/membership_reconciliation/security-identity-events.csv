@@ -1,0 +1,1 @@
+identity_event_id,event_type,effective_date,predecessor_security_id,successor_security_id,relationship,old_isin,new_isin,old_symbol,new_symbol,ratio,source_url,source_sha256,notes
