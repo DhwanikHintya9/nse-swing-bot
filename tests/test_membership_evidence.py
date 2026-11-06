@@ -20,7 +20,13 @@ CAPTURED = "2026-11-06T10:00:00Z"
 def _write_snapshot(path: pathlib.Path, rows: list[tuple[str, str]]) -> pathlib.Path:
     pd.DataFrame(
         [
-            [f"Company {index}", "Industry", symbol, "EQ", isin]
+            [
+                "Dummy HEG Ltd." if symbol == "DUMMYHEG" else f"Company {index}",
+                "Industry",
+                symbol,
+                "EQ",
+                isin,
+            ]
             for index, (symbol, isin) in enumerate(rows)
         ],
         columns=["Company Name", "Industry", "Symbol", "Series", "ISIN Code"],
