@@ -52,7 +52,6 @@ def _outline_rows(reader: PdfReader) -> list[dict[str, Any]]:
     return rows
 
 
-
 def _embedded_file_names(reader: PdfReader, max_files: int) -> list[str]:
     """Read only PDF name-tree labels; do not decompress embedded file streams."""
     def resolve(value: Any) -> Any:
@@ -94,9 +93,9 @@ def inspect_captured_pdf(
 ) -> Path:
     """Inspect PDF metadata, page text fingerprints, bookmarks and embedded files.
 
-    The PDF is never rewritten. Embedded files are inventoried and hashed in
-    memory but are not extracted. Inspection is not source authentication or
-    operator review.
+    The PDF is never rewritten. Embedded-file names are read from the PDF
+    name tree without decompressing or extracting embedded streams.
+    Inspection is not source authentication or operator review.
     """
     for name, value in (
         ("max_pdf_bytes", max_pdf_bytes),
@@ -169,7 +168,8 @@ def inspect_captured_pdf(
             "Text extraction may omit scanned/image-only content, layout, tables or handwriting.",
             "Bookmarks and metadata are document-provided labels, not proof of "
             "annexure completeness.",
-            "Embedded attachment names are read from the PDF name tree only; streams are not decompressed or extracted.",
+            "Embedded attachment names are read from the PDF name tree only; "
+            "streams are not decompressed or extracted.",
             "Inspection does not establish source authenticity, direct review, P1 status "
             "or event admission.",
         ],
@@ -197,8 +197,6 @@ def verify_exact_pdf_excerpt(
     capture_manifest_path: Path,
     page_number: int,
     exact_excerpt: str,
-    *,
-    attachment_name: str | None = None,
 ) -> dict[str, Any]:
     """Verify an exact excerpt exists on one page of a captured PDF.
 
@@ -209,10 +207,6 @@ def verify_exact_pdf_excerpt(
         raise ValueError("page_number must be a positive integer")
     if not isinstance(exact_excerpt, str) or not exact_excerpt.strip():
         raise ValueError("exact_excerpt must be a non-empty string")
-    if attachment_name is not None:
-        raise ValueError(
-            "inspect and capture the embedded attachment separately before excerpt review"
-        )
     capture = verify_capture_manifest(capture_manifest_path)
     if capture.archive_path.suffix.lower() != ".pdf":
         raise ValueError("capture must identify a PDF file")
