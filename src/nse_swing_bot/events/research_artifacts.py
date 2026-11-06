@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
 import math
 import os
@@ -95,12 +97,14 @@ def export_research_event_frame(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     columns = ["decision_at", *[str(column) for column in frame.columns]]
-    lines = [",".join(json.dumps(column, ensure_ascii=False) for column in columns)]
+    buffer = io.StringIO(newline="")
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow(columns)
     for timestamp, row in frame.iterrows():
         values = [timestamp.isoformat()]
         values.extend(_serialize_cell(str(column), row[column]) for column in frame.columns)
-        lines.append(",".join(json.dumps(value, ensure_ascii=False) for value in values))
-    csv_bytes = ("\n".join(lines) + "\n").encode("utf-8")
+        writer.writerow(values)
+    csv_bytes = buffer.getvalue().encode("utf-8")
     digest = hashlib.sha256(csv_bytes).hexdigest()
     timestamp_label = captured_at.strftime("%Y%m%dT%H%M%S%f%z")
     stem = f"research-events-{timestamp_label}-{digest[:12]}"
