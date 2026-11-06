@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import zipfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -42,7 +43,8 @@ def verify_capture_manifest(manifest_path: Path) -> VerifiedCapture:
     payload = json.loads(manifest.read_text(encoding="utf-8"))
     if not isinstance(payload, dict) or payload.get("schema_version") != 1:
         raise ValueError("unsupported capture manifest schema_version")
-    if payload.get("capture_mode") != "local_original_bytes_no_network":
+    capture_mode = payload.get("capture_mode")
+    if capture_mode not in {"local_original_bytes_no_network", "zip_member_original_bytes_no_network"}:
         raise ValueError("unsupported capture_mode")
 
     event_id = _required_text(payload, "event_id")
@@ -95,6 +97,36 @@ def verify_capture_manifest(manifest_path: Path) -> VerifiedCapture:
     if digest.hexdigest() != expected_sha256:
         raise ValueError("sha256 mismatch: archived source bytes do not match manifest")
 
+    if capture_mode == "zip_member_original_bytes_no_network":
+        parent_raw = _required_text(payload, "parent_capture_manifest_path")
+        parent_path = Path(parent_raw).expanduser().resolve(strict=True)
+        parent = verify_capture_manifest(parent_path)
+        if parent.archive_path.suffix.lower() != ".zip":
+            raise ValueError("ZIP-member parent must be a ZIP archive")
+        if (parent.event_id, parent.source_record_id, parent.source_url) != (event_id, source_record_id, source_url):
+            raise ValueError("parent capture event/source lineage mismatch")
+        if payload.get("parent_archive_sha256") != parent.sha256:
+            raise ValueError("parent archive SHA-256 does not match verified parent capture")
+        member_name = _required_text(payload, "member_name")
+        member_crc32 = _required_text(payload, "member_crc32")
+        if not re.fullmatch(r"[0-9a-f]{8}", member_crc32):
+            raise ValueError("member_crc32 must be an eight-character lowercase hex value")
+        try:
+            with zipfile.ZipFile(parent.archive_path, "r") as package:
+                infos = [item for item in package.infolist() if item.filename == member_name and not item.is_dir()]
+                if len(infos) != 1:
+                    raise ValueError("parent ZIP member is missing or duplicated")
+                info = infos[0]
+                member_digest = hashlib.sha256()
+                member_length = 0
+                with package.open(info, "r") as member_stream:
+                    while chunk := member_stream.read(1024 * 1024):
+                        member_digest.update(chunk)
+                        member_length += len(chunk)
+        except (OSError, zipfile.BadZipFile, RuntimeError) as error:
+            raise ValueError("cannot verify parent ZIP member lineage") from error
+        if member_length != actual_length or member_digest.hexdigest() != expected_sha256 or f"{info.CRC:08x}" != member_crc32:
+            raise ValueError("child bytes do not match parent ZIP member lineage")
     return VerifiedCapture(
         manifest_path=manifest,
         archive_path=archive_path,
