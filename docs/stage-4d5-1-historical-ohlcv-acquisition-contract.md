@@ -170,16 +170,12 @@ This stage is research-data acquisition only. It does not modify Phase 1 signals
 
 The CLI defaults to the five-symbol EQ pilot `RELIANCE,HDFCBANK,INFY,SUNPHARMA,LT`, the archived 2026-09-30-effective Nifty 500 source, and the combined official 2025-2026 NSE equity holiday file. Its default window is 2025-11-06 through 2026-11-05, with declared calendar coverage from 2025-01-01 through 2026-12-31. Override the calendar and coverage only when using another source snapshot; separately document any special session inside the requested interval.
 
-Example (replace the calendar path, source, and dates with the approved full-window calendar evidence):
+Default pilot invocation (uses the archived 2025-2026 holiday file and default 12-month date window):
 
 ```bash
-python scripts/kite_read_only_pilot.py \
-  --calendar-csv /path/to/official-nse-equity-calendar.csv \
-  --calendar-source "NSE official equity calendar; source references recorded with the file" \
-  --calendar-coverage-start 2025-11-06 \
-  --calendar-coverage-end 2026-12-31 \
-  --from-date 2025-11-06 \
-  --to-date 2026-11-05
+python scripts/kite_read_only_pilot.py
 ```
+
+To override the window or calendar source, pass the corresponding `--from-date`, `--to-date`, `--calendar-csv`, `--calendar-source`, and coverage arguments. Do not extend declared calendar coverage beyond the dates supported by source evidence.
 
 Optional `--special-session YYYY-MM-DD=SOURCE` arguments may be repeated. To use a different five-symbol EQ pilot, pass `--symbols SYMBOL1,SYMBOL2,SYMBOL3,SYMBOL4,SYMBOL5`. The command reads `KITE_API_KEY` and `KITE_ACCESS_TOKEN` from the local environment / Git-ignored `.env`; never paste them into chat or commit them. A nonzero exit code means the immutable manifest was written but the pilot failed its acceptance gate. Review that manifest and its quarantine references rather than rerunning blindly.
