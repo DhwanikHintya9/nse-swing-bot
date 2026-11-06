@@ -381,6 +381,22 @@ def validate_ledgers(
                 f"{context}: superseded event belongs to a different index"
             )
 
+    supersedes_by_event = {
+        row["event_id"]: row["supersedes_event_id"]
+        for row in membership_events
+        if row["supersedes_event_id"]
+    }
+    for event_id in supersedes_by_event:
+        visited: set[str] = set()
+        current = event_id
+        while current in supersedes_by_event:
+            if current in visited:
+                raise LedgerValidationError(
+                    f"membership event supersession cycle detected at {current!r}"
+                )
+            visited.add(current)
+            current = supersedes_by_event[current]
+
     return {
         "security_identifiers": len(identifiers),
         "security_identity_events": len(identity_events),
