@@ -130,9 +130,11 @@ def write_acquisition_manifest(
         # destination already exists; os.replace would silently overwrite it.
         os.link(temporary, destination)
         temporary.unlink()
-    except FileExistsError:
+    except FileExistsError as error:
         temporary.unlink(missing_ok=True)
-        raise FileExistsError(f"refusing to overwrite acquisition manifest: {destination}")
+        raise FileExistsError(
+            f"refusing to overwrite acquisition manifest: {destination}"
+        ) from error
     except Exception:
         temporary.unlink(missing_ok=True)
         raise
